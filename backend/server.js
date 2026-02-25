@@ -7,6 +7,7 @@ import connectDB from './config/db.js';
 
 // Import Routes
 import adminRoutes from './routes/adminRoutes.js';
+import clientRoutes from './routes/clientRoutes.js';
 
 dotenv.config();
 connectDB();
@@ -18,6 +19,7 @@ app.use(cors());
 app.use(express.json()); 
 
 app.use('/api/admin', adminRoutes);
+app.use('/api/clients', clientRoutes);
 
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is running smoothly.' });
