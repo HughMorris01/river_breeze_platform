@@ -1,14 +1,16 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "server.js",
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "data:admin": "node seeder.js -admin",
+    "data:destroy": "node seeder.js -d"
   },
   "keywords": [],
-  "author": "",
+  "author": "Greg Farrell",
   "license": "ISC",
   "description": "",
   "dependencies": {
