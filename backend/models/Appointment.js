@@ -1,18 +1,25 @@
+// backend/models/Appointment.js
 import mongoose from 'mongoose';
 
 const appointmentSchema = new mongoose.Schema({
   client: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
-    ref: 'Client', // This tells Mongoose to look in the Client collection for this ID
+    ref: 'Client', 
   },
   serviceType: {
     type: String,
     required: true,
   },
+  
+  // New Add-Ons Array
+  addOns: [
+    { type: String }
+  ],
+  
   appointmentDate: {
     type: Date,
-    required: false, // Optional right now in case they just want a quote first
+    required: false, 
   },
   quotedPrice: {
     type: Number,
@@ -22,7 +29,7 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     required: true,
     default: 'Pending',
-    enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'], // Restricts the status to these specific words
+    enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'], 
   }
 }, { 
   timestamps: true 
