@@ -34,7 +34,7 @@ export default function LoginPage({ onBack }) {
 
   return (
     <div className="flex items-center justify-center min-h-[80vh] px-4">
-      <div className="w-full max-w-md p-8 bg-white shadow-2xl rounded-2xl border border-slate-100">
+      <div className="w-full max-w-md p-4 bg-white shadow-2xl rounded-2xl border border-slate-100">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-black text-slate-800 tracking-tight">Admin Login</h2>
           <p className="text-slate-500 mt-2">Enter your credentials to manage leads.</p>

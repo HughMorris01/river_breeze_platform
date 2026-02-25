@@ -86,7 +86,7 @@ export default function QuoteCalculator() {
     <div className="max-w-4xl mx-auto mt-12 overflow-hidden bg-white shadow-2xl rounded-2xl mb-20">
       
       {/* Header Section */}
-      <div className="px-8 py-10 text-center text-white bg-slate-800 transition-all duration-300">
+      <div className="px-4 py-10 text-center text-white bg-slate-800 transition-all duration-300">
         <h2 className="text-4xl font-extrabold tracking-tight">Instant Quote Calculator</h2>
         <p className="max-w-xl mx-auto mt-4 text-lg text-slate-300">
           {step === 1 && "Select a service below to begin customizing your cleaning package."}
@@ -98,7 +98,7 @@ export default function QuoteCalculator() {
 
       {/* --- STEP 1: SERVICE SELECTION --- */}
       {step === 1 && (
-        <div className="p-8 md:p-12 animate-fade-in">
+        <div className="p-4 md:p-12 animate-fade-in">
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             
             {/* Standard Clean Card */}
@@ -111,7 +111,7 @@ export default function QuoteCalculator() {
               </div>
               <p className={`${serviceType === 'Standard Clean' ? 'text-teal-800' : 'text-slate-600'} font-medium mb-6`}>Perfect for routine upkeep and maintaining a spotless, welcoming environment.</p>
               
-              <ul className={`text-sm space-y-3 flex-grow ${serviceType === 'Standard Clean' ? 'text-teal-800' : 'text-slate-600'}`}>
+              <ul className={`text-sm space-y-3 grow ${serviceType === 'Standard Clean' ? 'text-teal-800' : 'text-slate-600'}`}>
                 <li className="flex items-start gap-3"><span className="text-teal-500 font-bold">✓</span> Surface dusting & wipe downs</li>
                 <li className="flex items-start gap-3"><span className="text-teal-500 font-bold">✓</span> Vacuuming & mopping all floors</li>
                 <li className="flex items-start gap-3"><span className="text-teal-500 font-bold">✓</span> Bathroom & kitchen sanitization</li>
@@ -129,7 +129,7 @@ export default function QuoteCalculator() {
               </div>
               <p className={`${serviceType === 'The Spring Breeze Reset' ? 'text-teal-800' : 'text-slate-600'} font-medium mb-6`}>Our premium property opening package. A top-to-bottom seasonal deep clean.</p>
               
-              <ul className={`text-sm space-y-3 flex-grow ${serviceType === 'The Spring Breeze Reset' ? 'text-teal-800' : 'text-slate-600'}`}>
+              <ul className={`text-sm space-y-3 grow ${serviceType === 'The Spring Breeze Reset' ? 'text-teal-800' : 'text-slate-600'}`}>
                 <li className="flex items-start gap-3"><span className="text-teal-500 font-bold">✓</span> <span className="font-bold">Everything in Standard Clean</span></li>
                 <li className="flex items-start gap-3"><span className="text-teal-500 font-bold">✓</span> Hand-washing baseboards & trim</li>
                 <li className="flex items-start gap-3"><span className="text-teal-500 font-bold">✓</span> Deep scrubbing bathroom grout</li>
@@ -178,7 +178,7 @@ export default function QuoteCalculator() {
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={propertyDetails.hasPets} onChange={(e) => setPropertyDetails({ hasPets: e.target.checked })} />
-                <div className="w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-teal-500 shadow-inner"></div>
+                <div className="w-14 h-7 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-.5 after:left-.5 after:bg-white after:border-slate-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-teal-500 shadow-inner"></div>
               </label>
             </div>
 

@@ -1,54 +1,45 @@
 // frontend/src/App.jsx
 import { useState } from 'react';
 import { useAuthStore } from './store/authStore';
+import Header from './components/Header';
 import Hero from './components/Hero';
 import QuoteCalculator from './components/QuoteCalculator';
 import AdminDashboard from './pages/AdminDashboard';
 import LoginPage from './pages/LoginPage';
+import Footer from './components/Footer';
 
 export default function App() {
   const { token } = useAuthStore();
-  const [view, setView] = useState('home'); // 'home', 'quote', 'login'
+  const [view, setView] = useState('home');
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans">
-      {/* Navigation Bar */}
-      <nav className="p-6 flex justify-between items-center max-w-7xl mx-auto border-b border-slate-100 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <h1 
-          onClick={() => setView('home')} 
-          className="text-2xl font-black text-slate-800 tracking-tighter cursor-pointer"
-        >
-          River Breeze <span className="text-teal-500 font-medium italic">Domestic Detailing</span>
-        </h1>
-        
-        {!token && (
-          <button 
-            onClick={() => setView(view === 'login' ? 'home' : 'login')}
-            className="px-4 py-2 text-sm font-bold text-slate-600 border-2 border-slate-200 rounded-xl hover:bg-slate-100 transition-all"
-          >
-            {view === 'login' ? 'Back Home' : 'Admin Login'}
-          </button>
-        )}
-      </nav>
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-teal-100 selection:text-teal-900">
+      
+      {!token && <Header view={view} setView={setView} />}
 
       <main>
-        {/* If Admin is logged in, show Dashboard */}
         {token ? (
           <AdminDashboard />
         ) : (
           <>
-            {/* Logic to switch between Home, Quote, and Login */}
             {view === 'home' && <Hero onGetQuote={() => setView('quote')} />}
-            {view === 'quote' && <QuoteCalculator />}
-            {view === 'login' && <LoginPage onBack={() => setView('home')} />}
+            {view === 'quote' && (
+               // Added massive top padding to clear the absolute logo
+               <div className="pt-22 md:pt-38 pb-10 px-4">
+                 <QuoteCalculator />
+               </div>
+            )}
+            {view === 'login' && (
+              // Added massive top padding here too
+              <div className="pt-32 md:pt-48 pb-10 px-4">
+                <LoginPage onBack={() => setView('home')} />
+              </div>
+            )}
           </>
         )}
       </main>
 
-      {/* Simple Footer */}
-      <footer className="py-10 text-center text-slate-400 text-sm">
-        © 2026 River Breeze Domestic Detailing • Clayton, NY
-      </footer>
+     <Footer />
     </div>
   );
 }
