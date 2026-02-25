@@ -3,13 +3,15 @@ import { useState, useMemo } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 
 export default function QuoteCalculator() {
-  // Local state to track which step of the form the user is on
+  // Local state to track the flow and button loading status
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   
-  // Global state to track the actual data
+  // Global state from Zustand
   const { 
     serviceType, setServiceType, 
     propertyDetails, setPropertyDetails,
+    contactInfo, setContactInfo,
     addOns, toggleAddOn
   } = useQuoteStore();
 
@@ -38,6 +40,47 @@ export default function QuoteCalculator() {
     return Math.round(total); // Rounds to the nearest whole dollar
   }, [serviceType, propertyDetails, addOns]);
 
+  // --- DATABASE SUBMISSION LOGIC ---
+  const handleBooking = async () => {
+    setLoading(true);
+    try {
+      // 1. Create the Client in the database
+      const clientRes = await fetch('http://localhost:5000/api/clients', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          ...contactInfo, 
+          ...propertyDetails 
+        }),
+      });
+      const clientData = await clientRes.json();
+
+      if (!clientRes.ok) throw new Error('Failed to save client');
+
+      // 2. Create the Appointment linked to that Client ID
+      const appointmentRes = await fetch('http://localhost:5000/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client: clientData._id,
+          serviceType,
+          addOns,
+          quotedPrice: quoteTotal,
+        }),
+      });
+
+      if (!appointmentRes.ok) throw new Error('Failed to save appointment');
+
+      alert("Quote Saved! Katherine will contact you shortly to confirm your booking.");
+      setStep(1); // Reset the calculator back to start
+      
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong. Please check your connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto mt-12 overflow-hidden bg-white shadow-2xl rounded-2xl mb-20">
@@ -49,6 +92,7 @@ export default function QuoteCalculator() {
           {step === 1 && "Select a service below to begin customizing your cleaning package."}
           {step === 2 && "Tell us a bit about your home."}
           {step === 3 && "Here is your transparent, flat-rate estimate."}
+          {step === 4 && "Where should we send your official quote?"}
         </p>
       </div>
 
@@ -180,8 +224,42 @@ export default function QuoteCalculator() {
             <button onClick={() => setStep(2)} className="w-full sm:w-1/3 px-8 py-4 text-lg font-bold transition-all duration-300 bg-white border-2 text-slate-600 border-slate-200 rounded-xl hover:bg-slate-50">
               Edit Details
             </button>
-            <button className="w-full sm:w-2/3 px-8 py-4 text-lg font-bold text-white transition-all duration-300 rounded-xl bg-slate-800 hover:bg-slate-900 hover:shadow-xl">
+            {/* Navigates to Step 4 for Lead Capture */}
+            <button onClick={() => setStep(4)} className="w-full sm:w-2/3 px-8 py-4 text-lg font-bold text-white transition-all duration-300 rounded-xl bg-slate-800 hover:bg-slate-900 hover:shadow-xl">
               Proceed to Booking
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- STEP 4: CONTACT INFO & SUBMIT --- */}
+      {step === 4 && (
+        <div className="p-8 md:p-12 animate-fade-in space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div>
+               <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Full Name</label>
+               <input type="text" placeholder="Full Name" value={contactInfo.name} onChange={(e) => setContactInfo({ name: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
+             </div>
+             <div>
+               <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Email Address</label>
+               <input type="email" placeholder="Email Address" value={contactInfo.email} onChange={(e) => setContactInfo({ email: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
+             </div>
+             <div>
+               <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Phone Number</label>
+               <input type="tel" placeholder="Phone Number" value={contactInfo.phone} onChange={(e) => setContactInfo({ phone: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
+             </div>
+             <div>
+               <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Property Address</label>
+               <input type="text" placeholder="Clayton, NY area" value={contactInfo.address} onChange={(e) => setContactInfo({ address: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
+             </div>
+          </div>
+          
+          <div className="flex flex-col-reverse sm:flex-row gap-4 pt-8 mt-8 border-t border-slate-100">
+            <button onClick={() => setStep(3)} className="w-full sm:w-1/3 px-8 py-4 text-lg font-bold transition-all duration-300 bg-white border-2 text-slate-600 border-slate-200 rounded-xl hover:bg-slate-50">
+              Back
+            </button>
+            <button onClick={handleBooking} disabled={loading} className="w-full sm:w-2/3 px-8 py-4 text-lg font-bold text-white transition-all duration-300 rounded-xl bg-teal-600 hover:bg-teal-700 hover:shadow-xl disabled:bg-slate-400 disabled:cursor-not-allowed">
+              {loading ? "Saving Your Quote..." : "Secure This Price"}
             </button>
           </div>
         </div>
