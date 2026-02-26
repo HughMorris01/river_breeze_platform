@@ -7,3 +7,8 @@
     padding: 0;
   }
 }
+
+/* frontend/src/index.css */
+.hide-scrollbar::-webkit-scrollbar {
+    display: none;
+}

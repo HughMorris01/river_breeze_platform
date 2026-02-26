@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "data:admin": "node seeder.js -admin",
     "data:availability": "node seeder.js -availability",
+    "data:appointments": "node seeder.js -appointments",
     "data:destroy": "node seeder.js -d"
   },
   "keywords": [],
