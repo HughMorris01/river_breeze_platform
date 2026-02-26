@@ -1,132 +1,124 @@
 // frontend/src/components/ReturningClientBooking.jsx
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import BookingCalendar from './BookingCalendar';
+import { useNavigate, Link } from 'react-router-dom';
+import Autocomplete from 'react-google-autocomplete'; // <-- NEW IMPORT
 import toast from 'react-hot-toast';
 
 export default function ReturningClientBooking() {
+  const [address, setAddress] = useState('');
+  const [identity, setIdentity] = useState('');
   const [loading, setLoading] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState(null);
-  const [contactInfo, setContactInfo] = useState({ name: '', email: '', phone: '', address: '' });
-  const [serviceType, setServiceType] = useState('Standard Clean');
+  
+  const navigate = useNavigate();
 
-  const handleBooking = async () => {
-    if (!selectedSlot) return toast.error("Please select an available date and time.");
+  const handleVerify = async (e) => {
+    e.preventDefault();
     
-    if (!contactInfo.name || !contactInfo.email || !contactInfo.phone || !contactInfo.address) {
-      return toast.error("Please fill out all contact details.");
+    if (!address || !identity) {
+      return toast.error("Please provide both pieces of information.");
     }
-    
+
     setLoading(true);
+
     try {
-      const clientRes = await fetch('/api/clients', {
+      const res = await fetch('/api/clients/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          ...contactInfo, 
-          isReturning: true,
-          squareFootage: 0,
-          bedrooms: 0,
-          bathrooms: 0,
-          additionalRooms: 0,
-          hasPets: false
-        }),
-      });
-      const clientData = await clientRes.json();
-      
-      if (!clientRes.ok) throw new Error(clientData.message || 'Failed to save client');
-
-      const appointmentRes = await fetch('/api/appointments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client: clientData._id,
-          serviceType,
-          addOns: [],
-          quotedPrice: 0,
-          timeBlock: selectedSlot._id 
-        }),
+        body: JSON.stringify({ address, identity })
       });
 
-      const appointmentData = await appointmentRes.json();
-      
-      if (!appointmentRes.ok) throw new Error(appointmentData.message || 'Failed to save appointment');
+      const data = await res.json();
 
-      toast.success("Your slot has been reserved! You will receive a confirmation email when Katherine finalizes the appointment.", { duration: 6000 });
-      setSelectedSlot(null);
-      
+      if (res.ok) {
+        toast.success("Profile found! Let's get you scheduled.");
+        navigate('/returning/confirm', { state: { clientData: data } });
+      } else {
+        toast.error("We couldn't find an active profile matching those details.");
+        navigate('/quote');
+      }
+
     } catch (err) {
-      console.error(err);
-      toast.error(err.message || "Something went wrong. Please check your connection and try again.");
+      console.error("Verification failed:", err);
+      toast.error("A network error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-5xl mx-auto mt-12 overflow-hidden bg-white shadow-2xl rounded-2xl mb-20">
-      <div className="px-4 py-10 text-center text-white bg-teal-700">
-        <h2 className="text-4xl font-extrabold tracking-tight">Welcome Back</h2>
-        <p className="max-w-xl mx-auto mt-4 text-lg text-teal-100">
-          Skip the quote process and grab an open spot on Kate's schedule.
+    <div className="max-w-2xl mx-auto mt-12 bg-white shadow-2xl rounded-2xl overflow-hidden mb-20 border border-slate-100">
+      
+      <div className="px-8 py-10 text-center text-white bg-slate-800">
+        <h2 className="text-3xl font-extrabold tracking-tight">Welcome Back</h2>
+        <p className="mt-3 text-slate-300 font-medium">
+          Verify your property details to skip the quote process and book your next service.
         </p>
       </div>
 
-      <div className="p-6 md:p-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+      <div className="p-8 md:p-12">
+        <form onSubmit={handleVerify} className="space-y-6">
           
-          <div className="space-y-6">
-            <h3 className="text-xl font-black text-slate-800 mb-6 tracking-tight border-b border-slate-100 pb-4">Your Details</h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Full Name</label>
-                <input type="text" value={contactInfo.name} onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Email</label>
-                <input type="email" value={contactInfo.email} onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Phone</label>
-                <input type="tel" value={contactInfo.phone} onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Property Address</label>
-                <input type="text" value={contactInfo.address} onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" placeholder="123 River Rd" />
-              </div>
-            </div>
-            
-            <div>
-              <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Service Requested</label>
-              <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors bg-white appearance-none">
-                <option value="Standard Clean">Standard Clean</option>
-                <option value="The Spring Breeze Reset">The Spring Breeze Reset</option>
-              </select>
-            </div>
-
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">
-              <p className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-2">Deposit Waived</p>
-              <p className="text-sm text-slate-600">As a returning client, your $20 scheduling deposit is automatically waived. Billing will be handled directly after your service.</p>
-            </div>
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+              Property Address
+            </label>
+            {/* GOOGLE AUTOCOMPLETE COMPONENT */}
+            <Autocomplete
+              apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+              onPlaceSelected={(place) => {
+                if (place.formatted_address) {
+                  setAddress(place.formatted_address);
+                }
+              }}
+              options={{
+                types: ['address'],
+                componentRestrictions: { country: 'us' },
+                strictBounds: true,
+                // This creates a ~50 mile bounding box around Clayton, NY
+                bounds: {
+                  north: 44.96, 
+                  south: 43.51, 
+                  east: -75.06, 
+                  west: -77.10, 
+                }
+              }}
+              className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 transition-colors bg-slate-50 focus:bg-white text-lg font-medium text-slate-800"
+              placeholder="Start typing your address..."
+            />
           </div>
 
           <div>
-            <BookingCalendar onSelectSlot={(block) => setSelectedSlot(block)} />
-            
-            <button 
-              onClick={handleBooking} 
-              disabled={loading || !selectedSlot} 
-              className="w-full mt-8 py-5 text-xl font-bold text-white transition-all duration-300 rounded-xl bg-teal-600 hover:bg-teal-700 shadow-xl hover:-translate-y-1 disabled:bg-slate-300 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed"
-            >
-              {loading ? "Processing..." : "Submit Booking Request"}
-            </button>
-            
-            <Link to="/" className="block text-center w-full mt-4 py-3 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">
-              ← Cancel & Return Home
-            </Link>
+             <div className="flex justify-between items-end mb-2">
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">
+                  Verify Identity
+                </label>
+             </div>
+            <input 
+              type="text" 
+              value={identity} 
+              onChange={(e) => setIdentity(e.target.value)} 
+              className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 transition-colors bg-slate-50 focus:bg-white text-lg font-medium text-slate-800" 
+              placeholder="Email address OR Phone number" 
+            />
           </div>
 
+          <div className="pt-6">
+            <button 
+              type="submit"
+              disabled={loading} 
+              className="w-full py-5 text-xl font-bold text-white transition-all duration-300 rounded-xl bg-teal-600 hover:bg-teal-700 shadow-xl hover:-translate-y-1 disabled:bg-slate-300 disabled:shadow-none disabled:translate-y-0 disabled:cursor-not-allowed"
+            >
+              {loading ? "Searching Records..." : "Find My Profile"}
+            </button>
+          </div>
+          
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+          <p className="text-sm text-slate-500 mb-4">New to River Breeze?</p>
+          <Link to="/quote" className="text-teal-600 font-bold hover:text-teal-700 transition-colors">
+            Get an instant quote instead →
+          </Link>
         </div>
       </div>
     </div>

@@ -1,143 +1,153 @@
 // backend/seeder.js
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
-import Admin from './models/Admin.js';
-import TimeBlock from './models/TimeBlock.js';
 import Client from './models/Client.js';
+import TimeBlock from './models/TimeBlock.js';
 import Appointment from './models/Appointment.js';
-import admins from './data/adminData.js';
 
 dotenv.config();
 connectDB();
 
-const importAdminData = async () => {
-  try {
-    await Admin.deleteMany();
-    for (const admin of admins) {
-      await Admin.create(admin);
-    }
-    console.log('🟢 Admin Data Imported Successfully!');
-    process.exit();
-  } catch (error) {
-    console.error(`🔴 Error importing admin data: ${error.message}`);
-    process.exit(1);
-  }
-};
+// Abbreviated to perfectly match Google Places formatting
+const localStreets = ['Riverside Dr', 'James St', 'Mary St', 'Webb St', 'State St', 'John St', 'Hugunin St', 'Alexandria St', 'Joseph Lonsway Dr'];
+const firstNames = ['John', 'Sarah', 'Michael', 'Emma', 'David', 'Olivia', 'James', 'Katherine', 'William', 'Sophia'];
+const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
 
-const importAvailabilityData = async () => {
-  try {
-    await TimeBlock.deleteMany();
-    console.log('🟡 Old TimeBlocks cleared.');
-
-    const timeBlocks = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 0; i < 7; i++) {
-      const targetDate = new Date(today);
-      targetDate.setDate(today.getDate() + i);
-
-      timeBlocks.push({ date: targetDate, startTime: '09:00', endTime: '11:00', isBooked: false });
-      timeBlocks.push({ date: targetDate, startTime: '14:00', endTime: '16:00', isBooked: false });
-    }
-
-    await TimeBlock.insertMany(timeBlocks);
-    console.log('🟢 7 Days of Availability Seeded Successfully!');
-    process.exit();
-  } catch (error) {
-    console.error(`🔴 Error importing availability data: ${error.message}`);
-    process.exit(1);
-  }
-};
-
-// NEW: Function to seed fake booked appointments
-const importAppointmentData = async () => {
+const generateClients = async () => {
   try {
     await Client.deleteMany();
+    console.log('🟡 Old Clients cleared.');
+
+    const clients = [];
+    for (let i = 0; i < 75; i++) {
+      const first = firstNames[Math.floor(Math.random() * firstNames.length)];
+      const last = lastNames[Math.floor(Math.random() * lastNames.length)];
+      const street = localStreets[Math.floor(Math.random() * localStreets.length)];
+      const houseNum = Math.floor(Math.random() * 899) + 100;
+      
+      clients.push({
+        name: `${first} ${last}`,
+        email: `${first.toLowerCase()}.${last.toLowerCase()}${i}@example.com`,
+        phone: `555-010-${Math.floor(1000 + Math.random() * 9000)}`,
+        // Appended ZIP and USA to perfectly match the Autocomplete output
+        address: `${houseNum} ${street}, Clayton, NY 13624, USA`,
+        bedrooms: Math.floor(Math.random() * 4) + 1,
+        bathrooms: Math.floor(Math.random() * 3) + 1,
+        squareFootage: Math.floor(Math.random() * 2500) + 800,
+        isReturning: true
+      });
+    }
+
+    await Client.insertMany(clients);
+    console.log('🟢 75 Authentic Google-Formatted Clients Seeded Successfully!');
+    process.exit();
+  } catch (error) {
+    console.error(`🔴 Error generating clients: ${error.message}`);
+    process.exit(1);
+  }
+};
+
+const generateSchedule = async () => {
+  try {
+    await TimeBlock.deleteMany();
     await Appointment.deleteMany();
-    console.log('🟡 Old Clients and Appointments cleared.');
+    console.log('🟡 Old Schedule & Appointments cleared.');
+
+    const allClients = await Client.find();
+    if (allClients.length === 0) {
+      console.error('🔴 No clients found! Please run "npm run data:clients" first.');
+      process.exit(1);
+    }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
-    const firstNames = ['John', 'Sarah', 'Michael', 'Emma', 'David', 'Olivia', 'James'];
-    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller'];
     const services = ['Standard Clean', 'The Spring Breeze Reset'];
 
-    for (let i = 0; i < 7; i++) {
+    // Generate 30 days of schedule: 15 days in the past, 15 days in the future
+    for (let i = -15; i < 15; i++) {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + i);
 
-      // Randomly decide to create 1 or 2 appointments for this day
-      const appointmentsToCreate = Math.floor(Math.random() * 2) + 1; 
+      // Skip Sundays (0)
+      if (targetDate.getDay() === 0) continue; 
 
-      for (let j = 0; j < appointmentsToCreate; j++) {
-        // 1. Create a fake TimeBlock for this appointment
-        const timeBlock = await TimeBlock.create({
-          date: targetDate,
-          startTime: j === 0 ? '10:00' : '15:00',
-          endTime: j === 0 ? '12:00' : '17:00',
-          isBooked: true // Automatically mark it as booked!
-        });
+      const isPast = i < 0;
+      const shiftStart = Math.random() > 0.5 ? 9 : 13; 
+      
+      const block1 = await TimeBlock.create({
+        date: targetDate,
+        startTime: `${shiftStart}:00`,
+        endTime: `${shiftStart + 2}:00`,
+        isBooked: false
+      });
 
-        // 2. Create a fake Client
-        const randomFirst = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const randomLast = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const client = await Client.create({
-          name: `${randomFirst} ${randomLast}`,
-          email: `${randomFirst.toLowerCase()}.${randomLast.toLowerCase()}@example.com`,
-          phone: `555-010-${Math.floor(Math.random() * 1000)}`,
-          address: `${Math.floor(Math.random() * 900) + 100} River Rd, Clayton, NY`,
-          bedrooms: `${Math.floor(Math.random() * 10%3) + 100}`,
-          bathrooms: `${Math.floor(Math.random() * 10%2) + 100}`,
-          squareFootage: `${Math.floor(Math.random() * 3000) + 100}`,
-          isReturning: Math.random() > 0.5
-        });
+      const block2 = await TimeBlock.create({
+        date: targetDate,
+        startTime: `${shiftStart + 2.5}:00`, 
+        endTime: `${shiftStart + 4.5}:00`,
+        isBooked: false
+      });
 
-        // 3. Create the Appointment
+      const appointmentsToCreate = Math.floor(Math.random() * 3); 
+
+      if (appointmentsToCreate > 0) {
+        block1.isBooked = true;
+        await block1.save();
+        
+        let status1 = 'Pending';
+        if (isPast) {
+            status1 = Math.random() > 0.1 ? 'Completed' : 'Canceled';
+        } else {
+            status1 = Math.random() > 0.4 ? 'Confirmed' : 'Pending';
+        }
+
+        const randomClient1 = allClients[Math.floor(Math.random() * allClients.length)];
         await Appointment.create({
-          client: client._id,
-          timeBlock: timeBlock._id,
+          client: randomClient1._id,
+          timeBlock: block1._id,
           serviceType: services[Math.floor(Math.random() * services.length)],
-          quotedPrice: Math.floor(Math.random() * 200) + 150,
-          status: 'Pending',
+          quotedPrice: Math.floor(Math.random() * 150) + 95,
+          status: status1,
+          addOns: []
+        });
+      }
+
+      if (appointmentsToCreate > 1) {
+        block2.isBooked = true;
+        await block2.save();
+
+        let status2 = 'Pending';
+        if (isPast) {
+            status2 = Math.random() > 0.3 ? 'Completed' : 'Canceled';
+        } else {
+            status2 = Math.random() > 0.8 ? 'Canceled' : 'Pending';
+        }
+
+        const randomClient2 = allClients[Math.floor(Math.random() * allClients.length)];
+        await Appointment.create({
+          client: randomClient2._id,
+          timeBlock: block2._id,
+          serviceType: services[Math.floor(Math.random() * services.length)],
+          quotedPrice: Math.floor(Math.random() * 150) + 95,
+          status: status2,
           addOns: []
         });
       }
     }
 
-    console.log('🟢 7 Days of Mock Appointments Seeded Successfully!');
+    console.log('🟢 30-Day Authentic Schedule & Appointments Seeded Successfully!');
     process.exit();
   } catch (error) {
-    console.error(`🔴 Error importing appointment data: ${error.message}`);
+    console.error(`🔴 Error generating schedule: ${error.message}`);
     process.exit(1);
   }
 };
 
-const destroyData = async () => {
-  try {
-    await Admin.deleteMany();
-    await TimeBlock.deleteMany();
-    await Client.deleteMany();
-    await Appointment.deleteMany();
-    console.log('🔴 All Data Destroyed!');
-    process.exit();
-  } catch (error) {
-    console.error(`🔴 Error destroying data: ${error.message}`);
-    process.exit(1);
-  }
-};
-
-// The Switchboard
-if (process.argv[2] === '-d') {
-  destroyData();
-} else if (process.argv[2] === '-admin') {
-  importAdminData();
-} else if (process.argv[2] === '-availability') {
-  importAvailabilityData();
-} else if (process.argv[2] === '-appointments') {
-  importAppointmentData();
+if (process.argv[2] === '-clients') {
+  generateClients();
+} else if (process.argv[2] === '-schedule') {
+  generateSchedule();
 } else {
-  console.log('🟡 Please specify a flag (e.g., -admin, -availability, -appointments, or -d)');
+  console.log('🟡 Please specify a flag (-clients or -schedule)');
   process.exit();
 }
