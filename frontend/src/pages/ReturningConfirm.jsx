@@ -42,8 +42,12 @@ export default function ReturningConfirm() {
           client: clientData._id,
           serviceType,
           addOns: [], 
-          quotedPrice: isEditing ? 120 : (lastJob?.quotedPrice || 95), // Placeholder pricing
-          timeBlock: selectedSlot._id
+          quotedPrice: isEditing ? 120 : (lastJob?.quotedPrice || 95), 
+          // --- NEW: Pass the exact temporal footprint ---
+          date: selectedSlot.date,
+          startTime: selectedSlot.startTime,
+          endTime: selectedSlot.endTime,
+          estimatedHours: 2.0 // We can make this dynamic based on the quote later
         }),
       });
 

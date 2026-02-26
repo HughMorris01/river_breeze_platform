@@ -9,7 +9,6 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Pending'); 
   const { token, logout } = useAuthStore();
 
-  // 1. INITIAL LOAD: Perfectly encapsulated inside the hook so the linter is perfectly silent.
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -28,7 +27,6 @@ export default function AdminDashboard() {
     }
   }, [token]); 
 
-  // --- ACTION HANDLERS ---
   const handleAction = async (id, action) => {
     try {
       const res = await fetch(`/api/appointments/${id}/${action}`, {
@@ -41,14 +39,11 @@ export default function AdminDashboard() {
       
       if (res.ok) {
         toast.success(`Appointment successfully ${action}ed!`);
-        
-        // 2. INLINE REFRESH: Fetch the fresh data directly after a successful action!
         const refreshRes = await fetch('/api/appointments', {
           headers: { Authorization: `Bearer ${token}` }, 
         });
         const freshData = await refreshRes.json();
         setAppointments(freshData);
-        
       } else {
         const data = await res.json();
         toast.error(`Failed to ${action}: ${data.message}`);
@@ -64,29 +59,22 @@ export default function AdminDashboard() {
   today.setHours(0, 0, 0, 0); 
 
   const filteredAppointments = appointments.filter((appt) => {
-    const apptDateStr = appt.timeBlock ? appt.timeBlock.date : appt.createdAt;
+    // UPDATED: Now looks directly at appt.date!
+    const apptDateStr = appt.date || appt.createdAt;
     const apptDate = new Date(apptDateStr);
     apptDate.setHours(0, 0, 0, 0);
 
     const isPastDue = apptDate < today;
 
-    if (activeTab === 'Pending') {
-      return appt.status === 'Pending' && !isPastDue;
-    }
-    if (activeTab === 'Confirmed') {
-      return appt.status === 'Confirmed' && !isPastDue;
-    }
-    if (activeTab === 'Completed') {
-      return appt.status === 'Completed' || ((appt.status === 'Pending' || appt.status === 'Confirmed') && isPastDue);
-    }
-    if (activeTab === 'Canceled') {
-      return appt.status === 'Canceled';
-    }
+    if (activeTab === 'Pending') return appt.status === 'Pending' && !isPastDue;
+    if (activeTab === 'Confirmed') return appt.status === 'Confirmed' && !isPastDue;
+    if (activeTab === 'Completed') return appt.status === 'Completed' || ((appt.status === 'Pending' || appt.status === 'Confirmed') && isPastDue);
+    if (activeTab === 'Canceled') return appt.status === 'Canceled';
     return false;
   });
 
   const pendingCount = appointments.filter(appt => {
-    const apptDate = new Date(appt.timeBlock ? appt.timeBlock.date : appt.createdAt);
+    const apptDate = new Date(appt.date || appt.createdAt);
     apptDate.setHours(0,0,0,0);
     return appt.status === 'Pending' && apptDate >= today;
   }).length;
@@ -95,7 +83,6 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
       <div className="max-w-7xl mx-auto">
         
-        {/* HEADER */}
         <div className="flex justify-between items-center mb-10">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex flex-wrap items-center gap-3 md:gap-4">
@@ -113,7 +100,6 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* VIEW TABS */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
           {['Pending', 'Confirmed', 'Completed', 'Canceled'].map(tab => (
             <button
@@ -130,7 +116,6 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* TABLE DATA */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mb-12">
           <table className="w-full text-left border-collapse min-w-250">
             <thead className="bg-slate-800 text-white">
@@ -148,21 +133,20 @@ export default function AdminDashboard() {
               {filteredAppointments.map((appt) => (
                 <tr key={appt._id} className={`transition-colors ${appt.status === 'Canceled' ? 'bg-slate-50 opacity-60' : 'hover:bg-slate-50'}`}>
                   
-                  {/* Client Info */}
                   <td className="p-4">
                     <div className="font-bold text-slate-800">{appt.client?.name}</div>
                     <div className="text-xs text-slate-500">{appt.client?.phone}</div>
                   </td>
                   
-                  {/* Date & Time */}
                   <td className="p-4">
-                    {appt.timeBlock ? (
+                    {/* NEW: Updated to render direct temporal data */}
+                    {appt.date ? (
                       <>
                         <div className="font-bold text-slate-800">
-                          {new Date(appt.timeBlock.date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(appt.date).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
                         </div>
                         <div className="text-xs text-teal-600 font-bold mt-0.5">
-                          {appt.timeBlock.startTime} - {appt.timeBlock.endTime}
+                          {appt.startTime} - {appt.endTime}
                         </div>
                       </>
                     ) : (
@@ -170,17 +154,14 @@ export default function AdminDashboard() {
                     )}
                   </td>
 
-                  {/* Service */}
                   <td className="p-4">
                     <span className="text-sm font-medium text-slate-700">{appt.serviceType}</span>
                   </td>
                   
-                  {/* Price */}
                   <td className="p-4">
                     <span className="text-lg font-bold text-teal-600">${appt.quotedPrice}</span>
                   </td>
 
-                  {/* DETAILS (Address & Add-ons) */}
                   <td className="p-4 text-xs text-slate-500 leading-tight">
                     {appt.client?.address}
                     {appt.addOns?.length > 0 && (
@@ -188,7 +169,6 @@ export default function AdminDashboard() {
                     )}
                   </td>
                   
-                  {/* Status Badge */}
                   <td className="p-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
                       appt.status === 'Pending' ? 'bg-amber-100 text-amber-700' : 
@@ -200,7 +180,6 @@ export default function AdminDashboard() {
                     </span>
                   </td>
                   
-                  {/* Actions */}
                   <td className="p-4">
                     <div className="flex gap-2">
                       {activeTab === 'Pending' && (

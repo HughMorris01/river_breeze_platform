@@ -52,7 +52,7 @@ export default function App() {
         <Toaster position="top-center" toastOptions={{ duration: 5000 }} />
         
         {/* The Header is now globally present for unauthenticated users */}
-        {!token && <Header />}
+         <Header />
 
         <main className="grow">
           <Routes>

@@ -1,126 +1,128 @@
 // frontend/src/components/BookingCalendar.jsx
 import { useState, useEffect } from 'react';
 
-export default function BookingCalendar({ onSelectSlot }) {
-  const [blocks, setBlocks] = useState([]);
+export default function BookingCalendar({ onSelectSlot, estimatedHours = 2.0 }) {
+  const [availableSlots, setAvailableSlots] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [selectedBlockId, setSelectedBlockId] = useState(null);
-  
-  // NEW: Tracks which day is currently expanded
-  const [expandedDate, setExpandedDate] = useState(null);
+  const [selectedDateStr, setSelectedDateStr] = useState('');
+  const [activeSlotId, setActiveSlotId] = useState(null);
 
   useEffect(() => {
     const fetchAvailability = async () => {
       try {
-        const response = await fetch('/api/availability');
-        const data = await response.json();
-        setBlocks(data);
+        // We pass the required hours to the engine so it can run the Anchor Rule!
+        const res = await fetch(`/api/availability?serviceHours=${estimatedHours}`);
+        const data = await res.json();
         
-        // Auto-expand the very first available day once data loads
+        setAvailableSlots(data);
+        
+        // Auto-select the first available date
         if (data.length > 0) {
-           const firstDate = new Date(data[0].date).toLocaleDateString('en-US', {
-             timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric',
-           });
-           setExpandedDate(firstDate);
+          setSelectedDateStr(data[0].date.split('T')[0]);
         }
-      } catch (error) {
-        console.error('Failed to fetch availability', error);
+      } catch (err) {
+        console.error("Failed to fetch availability", err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAvailability();
-  }, []);
+  }, [estimatedHours]);
 
-  const groupedBlocks = blocks.reduce((acc, block) => {
-    const dateKey = new Date(block.date).toLocaleDateString('en-US', {
-      timeZone: 'UTC',
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
-
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(block);
+  // Group the dynamic slots by Date for the UI
+  const slotsByDate = availableSlots.reduce((acc, slot) => {
+    const dateStr = slot.date.split('T')[0];
+    if (!acc[dateStr]) acc[dateStr] = [];
+    acc[dateStr].push(slot);
     return acc;
   }, {});
 
-  const handleSelection = (block) => {
-    setSelectedBlockId(block._id);
-    onSelectSlot(block); 
-  };
+  const availableDates = Object.keys(slotsByDate).sort();
 
-  const toggleDay = (dateLabel) => {
-    setExpandedDate(expandedDate === dateLabel ? null : dateLabel);
+  const handleSlotClick = (slot) => {
+    setActiveSlotId(slot._id);
+    onSelectSlot(slot);
   };
 
   if (loading) {
-    return <div className="text-center p-8 text-slate-500 font-medium animate-pulse">Loading Kate's schedule...</div>;
+    return (
+      <div className="flex justify-center items-center h-48 bg-slate-50 rounded-xl border border-slate-200">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-8 w-8 bg-teal-200 rounded-full mb-3"></div>
+          <p className="text-slate-400 font-bold text-sm tracking-widest uppercase">Checking Schedule...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (availableDates.length === 0) {
+    return (
+      <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200">
+        <p className="text-slate-600 font-medium">Kate's schedule is currently fully booked for this service duration.</p>
+        <p className="text-slate-400 text-sm mt-2">Please check back later for cancellations.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <h3 className="text-xl font-black text-slate-800 mb-6 tracking-tight">Select an Available Time</h3>
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-slate-800 px-6 py-4">
+        <h3 className="text-white font-bold tracking-wide">Select an Available Time</h3>
+      </div>
       
-      {Object.keys(groupedBlocks).length === 0 ? (
-        <div className="bg-slate-50 p-8 rounded-2xl text-center border border-slate-200">
-          <p className="text-slate-600 font-medium">Kate is currently fully booked.</p>
-          <p className="text-sm text-slate-400 mt-2">Please check back later for new openings.</p>
+      <div className="p-6">
+        <div className="mb-6">
+          <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
+            Available Dates
+          </label>
+          <select 
+            value={selectedDateStr}
+            onChange={(e) => {
+              setSelectedDateStr(e.target.value);
+              setActiveSlotId(null);
+              onSelectSlot(null);
+            }}
+            className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 bg-slate-50 text-slate-800 font-bold text-lg cursor-pointer"
+          >
+            {availableDates.map(dateStr => {
+              // Format for humans (e.g., "Thu, Mar 21")
+              const dateObj = new Date(dateStr + 'T12:00:00Z'); // Force noon UTC to prevent timezone shifts
+              const displayDate = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+              return (
+                <option key={dateStr} value={dateStr}>{displayDate}</option>
+              );
+            })}
+          </select>
         </div>
-      ) : (
-        <div className="space-y-4">
-          {Object.entries(groupedBlocks).map(([dateLabel, dayBlocks]) => {
-            const isExpanded = expandedDate === dateLabel;
-            
-            return (
-              <div key={dateLabel} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm transition-all duration-300">
-                
-                {/* ACCORDION HEADER (Click to open/close) */}
-                <button 
-                  onClick={() => toggleDay(dateLabel)}
-                  className="w-full bg-slate-50 px-5 py-4 flex justify-between items-center hover:bg-slate-100 transition-colors"
+
+        <div>
+           <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">
+            Available Start Times
+          </label>
+          {selectedDateStr && slotsByDate[selectedDateStr] ? (
+            <div className="grid grid-cols-2 gap-3">
+              {slotsByDate[selectedDateStr].map(slot => (
+                <button
+                  key={slot._id}
+                  onClick={() => handleSlotClick(slot)}
+                  className={`p-4 rounded-xl border-2 transition-all text-left flex flex-col items-center justify-center
+                    ${activeSlotId === slot._id 
+                      ? 'border-teal-500 bg-teal-50 shadow-md ring-2 ring-teal-500 ring-offset-1' 
+                      : 'border-slate-200 hover:border-teal-300 hover:bg-slate-50'
+                    }`}
                 >
-                  <h4 className="font-bold text-slate-700 tracking-wide text-left">{dateLabel}</h4>
-                  <span className="text-slate-400 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                    ▼
+                  <span className={`text-xl font-black ${activeSlotId === slot._id ? 'text-teal-700' : 'text-slate-700'}`}>
+                    {slot.startTime}
                   </span>
                 </button>
-                
-                {/* ACCORDION BODY (The actual times) */}
-                {isExpanded && (
-                  <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-100 animate-fade-in">
-                    {dayBlocks.map((block) => {
-                      const isSelected = selectedBlockId === block._id;
-                      
-                      return (
-                        <button
-                          key={block._id}
-                          onClick={() => handleSelection(block)}
-                          className={`
-                            p-4 rounded-xl text-left transition-all border-2 
-                            ${isSelected 
-                              ? 'border-teal-500 bg-teal-50 shadow-md ring-2 ring-teal-500/20' 
-                              : 'border-slate-100 bg-white hover:border-teal-200 hover:bg-slate-50'
-                            }
-                          `}
-                        >
-                          <div className={`font-bold ${isSelected ? 'text-teal-700' : 'text-slate-700'}`}>
-                            {block.startTime}
-                          </div>
-                          <div className={`text-xs mt-1 ${isSelected ? 'text-teal-600' : 'text-slate-400'}`}>
-                            2-Hour Service Block
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          ) : (
+             <p className="text-slate-500 text-sm italic">No slots available on this date.</p>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

@@ -1,249 +1,176 @@
 // frontend/src/components/AvailabilityManager.jsx
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../store/authStore';
-
-const PRESET_TIMES = [
-  { value: '07:00', label: '7:00 AM' },
-  { value: '08:00', label: '8:00 AM' },
-  { value: '09:00', label: '9:00 AM' },
-  { value: '10:00', label: '10:00 AM' },
-  { value: '11:00', label: '11:00 AM' },
-  { value: '12:00', label: '12:00 PM (Noon)' },
-  { value: '13:00', label: '1:00 PM' },
-  { value: '14:00', label: '2:00 PM' },
-  { value: '15:00', label: '3:00 PM' },
-  { value: '16:00', label: '4:00 PM' },
-  { value: '17:00', label: '5:00 PM' },
-  { value: '18:00', label: '6:00 PM' },
-];
+import toast from 'react-hot-toast';
 
 export default function AvailabilityManager() {
   const { token } = useAuthStore();
-  const [blocks, setBlocks] = useState([]);
+  const [shifts, setShifts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  // Form State
   const [date, setDate] = useState('');
-  const [startTime, setStartTime] = useState('');
-  const [error, setError] = useState('');
-  
-  // NEW: State for the Accordion
-  const [expandedDate, setExpandedDate] = useState(null);
+  const [startTime, setStartTime] = useState('09:00');
+  const [endTime, setEndTime] = useState('11:00');
 
-  const fetchBlocks = useCallback(async () => {
-    try {
-      const response = await fetch('/api/availability');
-      const data = await response.json();
-      setBlocks(data);
-    } catch (error) {
-      console.error('Failed to fetch availability', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    const init = async () => {
-      await fetchBlocks();
-    };
-    init();
-  }, [fetchBlocks]);
-
-  const availableTimeOptions = useMemo(() => {
-    if (!date) return PRESET_TIMES; 
-
-    const existingBlocksToday = blocks.filter((block) => {
-      const blockDateStr = new Date(block.date).toISOString().split('T')[0];
-      return blockDateStr === date;
-    });
-
-    return PRESET_TIMES.filter((preset) => {
-      const proposedStart = preset.value;
-      const [hours, minutes] = proposedStart.split(':');
-      const proposedEnd = `${String(parseInt(hours) + 2).padStart(2, '0')}:${minutes}`;
-
-      const overlaps = existingBlocksToday.some((block) => {
-        return (proposedStart < block.endTime) && (proposedEnd > block.startTime);
-      });
-
-      return !overlaps;
-    });
-  }, [date, blocks]);
-
-  useEffect(() => {
-    if (availableTimeOptions.length > 0) {
-      if (!availableTimeOptions.find((opt) => opt.value === startTime)) {
-        setStartTime(availableTimeOptions[0].value);
+  // Generate 30-min intervals for the dropdowns
+  const generateTimeOptions = () => {
+    const options = [];
+    for (let h = 7; h <= 19; h++) {
+      for (let m = 0; m < 60; m += 30) {
+        const time = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        options.push(time);
       }
-    } else {
-      setStartTime(''); 
     }
-  }, [availableTimeOptions, startTime]);
+    return options;
+  };
 
-  const handleAddBlock = async (e) => {
-    e.preventDefault();
-    setError(''); 
-    if (!date || !startTime) return;
+  const timeOptions = generateTimeOptions();
 
+  const fetchShifts = async () => {
     try {
-      const response = await fetch('/api/availability', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ date, startTime }),
+      const res = await fetch('/api/availability/shifts', {
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to add block');
-      }
-
-      // Auto-expand the date we just added a block to
-      const addedDateKey = new Date(date).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
-      setExpandedDate(addedDateKey);
-      fetchBlocks(); 
+      const data = await res.json();
+      if (res.ok) setShifts(data);
     } catch (err) {
-      setError(err.message);
+      console.error("Error fetching shifts:", err);
     }
   };
 
-  const handleDeleteBlock = async (id) => {
+  useEffect(() => {
+    if (token) fetchShifts();
+  }, [token]);
+
+  const handleAddShift = async (e) => {
+    e.preventDefault();
+    if (!date) return toast.error('Please select a date.');
+    
+    // Validate that end time is strictly after start time
+    if (startTime >= endTime) {
+      return toast.error('End time must be after start time.');
+    }
+
+    setLoading(true);
     try {
-      const response = await fetch(`/api/availability/${id}`, {
-        method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const res = await fetch('/api/availability', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
+        body: JSON.stringify({ date, startTime, endTime })
       });
 
-      if (response.ok) {
-        fetchBlocks();
+      if (res.ok) {
+        toast.success('Availability added!');
+        fetchShifts();
+      } else {
+        const data = await res.json();
+        toast.error(data.message || 'Failed to add availability');
       }
-    } catch (error) {
-      console.error('Failed to delete block', error);
+    } catch {
+      toast.error('Network error occurred.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Grouping blocks for the Accordion
-  const groupedBlocks = blocks.reduce((acc, block) => {
-    const dateKey = new Date(block.date).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(block);
-    return acc;
-  }, {});
+  const handleDeleteShift = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this available time block?")) return;
+    
+    try {
+      const res = await fetch(`/api/availability/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
-  const toggleDay = (dateLabel) => {
-    setExpandedDate(expandedDate === dateLabel ? null : dateLabel);
+      if (res.ok) {
+        toast.success('Availability removed!');
+        fetchShifts();
+      } else {
+        toast.error('Failed to remove availability');
+      }
+    } catch {
+      toast.error('Network error occurred.');
+    }
   };
-
-  const todayObj = new Date();
-  const minDateStr = todayObj.toISOString().split('T')[0];
-  const maxDateObj = new Date(todayObj);
-  maxDateObj.setMonth(maxDateObj.getMonth() + 3);
-  const maxDateStr = maxDateObj.toISOString().split('T')[0];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3 md:p-8">
-      <h2 className="text-2xl font-black text-slate-800 mb-6 tracking-tight">Manage Availability</h2>
-
-      {error && (
-        <div className="mb-6 p-4 text-sm font-semibold text-red-700 bg-red-50 border border-red-200 rounded-xl">
-          ⚠️ {error}
-        </div>
-      )}
-
-      <form onSubmit={handleAddBlock} className="flex flex-col sm:flex-row gap-4 mb-10">
-        <div className="flex-1">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Date</label>
-          <input
-            type="date"
-            required
-            min={minDateStr}
-            max={maxDateStr}
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none transition-all"
-          />
-        </div>
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+      <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50">
+        <h2 className="text-xl font-bold text-slate-800">Manage Availability</h2>
+        <p className="text-sm text-slate-500 mt-1">Add specific pockets of free time to your calendar.</p>
         
-        <div className="flex-1">
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Start Time</label>
-          <select
-            required
-            disabled={!date || availableTimeOptions.length === 0}
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 outline-none transition-all cursor-pointer appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+        <form onSubmit={handleAddShift} className="mt-6 flex flex-col md:flex-row gap-4 items-end">
+          <div className="w-full md:w-auto flex-1">
+            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Date</label>
+            <input 
+              type="date" 
+              value={date} 
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full p-3 border-2 rounded-lg outline-none focus:border-teal-500 bg-white" 
+              required
+            />
+          </div>
+          <div className="w-full md:w-auto">
+            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Start Time</label>
+            <select 
+              value={startTime} 
+              onChange={(e) => setStartTime(e.target.value)}
+              className="w-full p-3 border-2 rounded-lg outline-none focus:border-teal-500 bg-white"
+            >
+              {timeOptions.map(t => <option key={`start-${t}`} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <div className="w-full md:w-auto">
+            <label className="block text-xs font-bold uppercase text-slate-500 mb-1">End Time</label>
+            <select 
+              value={endTime} 
+              onChange={(e) => setEndTime(e.target.value)}
+              className="w-full p-3 border-2 rounded-lg outline-none focus:border-teal-500 bg-white"
+            >
+              {timeOptions.map(t => <option key={`end-${t}`} value={t}>{t}</option>)}
+            </select>
+          </div>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full md:w-auto px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg transition-all disabled:opacity-50"
           >
-            {availableTimeOptions.length > 0 ? (
-              availableTimeOptions.map((time) => (
-                <option key={time.value} value={time.value}>
-                  {time.label}
-                </option>
-              ))
-            ) : (
-              <option value="">No times available</option>
-            )}
-          </select>
-        </div>
-
-        <div className="flex items-end">
-          <button
-            type="submit"
-            disabled={!date || availableTimeOptions.length === 0}
-            className="w-full sm:w-auto px-8 py-3 bg-teal-500 text-white font-bold rounded-xl shadow-md hover:bg-teal-400 hover:-translate-y-0.5 transition-all disabled:bg-slate-300 disabled:hover:translate-y-0 disabled:shadow-none disabled:cursor-not-allowed"
-          >
-            Add 2-Hr Block
+            {loading ? 'Adding...' : 'Add Time'}
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
 
-      <div>
-        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">
-          Current Open Slots
-        </h3>
+      <div className="p-6 md:p-8 max-h-100 overflow-y-auto">
+        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Upcoming Free Time</h3>
         
-        {Object.keys(groupedBlocks).length === 0 ? (
-          <p className="text-slate-500 italic text-sm">No available slots listed yet.</p>
+        {shifts.length === 0 ? (
+          <p className="text-slate-500 italic">No upcoming availability set.</p>
         ) : (
-          <div className="space-y-4">
-            {Object.entries(groupedBlocks).map(([dateLabel, dayBlocks]) => {
-              const isExpanded = expandedDate === dateLabel;
-              
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {shifts.map(shift => {
+              // Ensure we display the date correctly based on UTC to avoid timezone shift bugs
+              const shiftDate = new Date(shift.date);
+              const displayDate = shiftDate.toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' });
+
               return (
-                <div key={dateLabel} className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm transition-all duration-300">
+                <div key={shift._id} className="p-4 border-2 border-slate-100 rounded-xl flex justify-between items-center bg-white hover:border-teal-100 transition-colors">
+                  <div>
+                    <p className="font-bold text-slate-800">{displayDate}</p>
+                    <p className="text-sm font-medium text-teal-600 mt-0.5">{shift.startTime} - {shift.endTime}</p>
+                  </div>
                   <button 
-                    onClick={() => toggleDay(dateLabel)}
-                    className="w-full bg-slate-50 px-5 py-4 flex justify-between items-center hover:bg-slate-100 transition-colors"
+                    onClick={() => handleDeleteShift(shift._id)}
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Remove this time block"
                   >
-                    <h4 className="font-bold text-slate-700 tracking-wide text-left">{dateLabel}</h4>
-                    <span className="text-slate-400 transition-transform duration-300" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-                      ▼
-                    </span>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
                   </button>
-                  
-                  {isExpanded && (
-                    <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-100 animate-fade-in">
-                      {dayBlocks.map((block) => (
-                        <div 
-                          key={block._id} 
-                          className="flex justify-between items-center p-4 bg-white border border-slate-200 rounded-xl hover:border-teal-200 transition-colors"
-                        >
-                          <div>
-                            <p className="font-bold text-slate-700">{block.startTime} - {block.endTime}</p>
-                            <p className="text-xs text-slate-400 mt-0.5">2-Hour Service Block</p>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteBlock(block._id)}
-                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Remove Slot"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               );
             })}

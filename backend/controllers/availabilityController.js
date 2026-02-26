@@ -100,13 +100,35 @@ export const getAvailability = async (req, res) => {
   }
 };
 
-// @desc    Get raw shifts for the Admin Dashboard
+// @desc    Get raw shifts for the Admin Dashboard (Today & Future + Lock Status)
 // @route   GET /api/availability/shifts
 // @access  Private/Admin
 export const getShifts = async (req, res) => {
   try {
-    const shifts = await Shift.find().sort({ date: 1 });
-    res.status(200).json(shifts);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 1. Fetch future shifts (Canvas) and future active appointments (Paint)
+    const shifts = await Shift.find({ date: { $gte: today } }).lean().sort({ date: 1 });
+    const activeAppointments = await Appointment.find({
+      date: { $gte: today },
+      status: { $in: ['Pending', 'Confirmed'] }
+    }).lean();
+
+    // 2. Map through shifts and flag them if an appointment lands on the same day
+    const lockedShifts = shifts.map(shift => {
+      const shiftDateStr = shift.date.toISOString().split('T')[0];
+      
+      const hasOverlap = activeAppointments.some(appt => {
+        const apptDateStr = appt.date.toISOString().split('T')[0];
+        // If an appointment is active on this exact date, lock the shift
+        return apptDateStr === shiftDateStr; 
+      });
+
+      return { ...shift, isLocked: hasOverlap };
+    });
+
+    res.status(200).json(lockedShifts);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching shifts' });
   }
@@ -130,6 +152,24 @@ export const addShift = async (req, res) => {
 // @access  Private/Admin
 export const deleteShift = async (req, res) => {
   try {
+    const shift = await Shift.findById(req.params.id);
+    if (!shift) return res.status(404).json({ message: 'Shift not found' });
+
+    // Security Check: Ensure she doesn't use Postman or a hack to bypass the UI lock
+    const shiftDate = new Date(shift.date);
+    shiftDate.setHours(0,0,0,0);
+    const nextDay = new Date(shiftDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const overlappingAppts = await Appointment.find({
+      date: { $gte: shiftDate, $lt: nextDay },
+      status: { $in: ['Pending', 'Confirmed'] }
+    });
+
+    if (overlappingAppts.length > 0) {
+      return res.status(400).json({ message: 'Cannot delete: You have active appointments on this day. Please cancel them first.' });
+    }
+
     await Shift.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: 'Shift deleted successfully' });
   } catch (error) {

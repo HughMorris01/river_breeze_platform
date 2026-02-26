@@ -7,7 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "data:clients": "node seeder.js -clients",
-    "data:import": "node seeder.js -schedule"
+    "data:import": "node seeder.js -import"
   },
   "keywords": [],
   "author": "Greg Farrell",
