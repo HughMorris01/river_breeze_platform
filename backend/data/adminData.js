@@ -1,8 +1,8 @@
 const admins = [
   {
     name: 'Katherine',
-    email: 'admin@riverbreeze.com',
-    password: 'password123', 
+    email: 'admin@river.com',
+    password: '123', 
   }
 ];
 

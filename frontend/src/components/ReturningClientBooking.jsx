@@ -11,18 +11,31 @@ export default function ReturningClientBooking({ onBack }) {
 
   const handleBooking = async () => {
     if (!selectedSlot) return toast.error("Please select an available date and time.");
-    if (!contactInfo.name || !contactInfo.email || !contactInfo.phone) return toast.error("Please fill out your contact details.");
+    // Make sure address is also required before submitting
+    if (!contactInfo.name || !contactInfo.email || !contactInfo.phone || !contactInfo.address) {
+      return toast.error("Please fill out all contact details.");
+    }
     
     setLoading(true);
     try {
-      // 1. Save Client (Marked explicitly as returning)
+      // 1. Save Client (Marked explicitly as returning, with default property data to satisfy the DB)
       const clientRes = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...contactInfo, isReturning: true }),
+        body: JSON.stringify({ 
+          ...contactInfo, 
+          isReturning: true,
+          squareFootage: 0,
+          bedrooms: 0,
+          bathrooms: 0,
+          additionalRooms: 0,
+          hasPets: false
+        }),
       });
       const clientData = await clientRes.json();
-      if (!clientRes.ok) throw new Error('Failed to save client');
+      
+      // If we still get a 400, this will catch it and log the exact backend message
+      if (!clientRes.ok) throw new Error(clientData.message || 'Failed to save client');
 
       // 2. Save Appointment
       const appointmentRes = await fetch('/api/appointments', {
@@ -31,20 +44,24 @@ export default function ReturningClientBooking({ onBack }) {
         body: JSON.stringify({
           client: clientData._id,
           serviceType,
-          addOns: [], // Returning express flow skips add-ons for simplicity
-          quotedPrice: 0, // Quote is TBD for express returning bookings
+          addOns: [],
+          quotedPrice: 0,
           timeBlock: selectedSlot._id 
         }),
       });
 
-      if (!appointmentRes.ok) throw new Error('Failed to save appointment');
+      const appointmentData = await appointmentRes.json();
+      
+      // Pass the specific backend message into the Error
+      if (!appointmentRes.ok) throw new Error(appointmentData.message || 'Failed to save appointment');
 
-      toast.success("Welcome back! Your request has been sent to Katherine.", { duration: 6000 });
-      onBack(); // Send them back to the home screen
+      toast.success("Your slot has been reserved! You will receive a confirmation email when Katherine finalizes the appointment.", { duration: 6000 });
+      setSelectedSlot(null);
       
     } catch (err) {
       console.error(err);
-      toast.error("Something went wrong. Please check your connection and try again.");
+      // Display the specific error message (e.g., "This time slot was just booked...")
+      toast.error(err.message || "Something went wrong. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
@@ -80,12 +97,18 @@ export default function ReturningClientBooking({ onBack }) {
                 <input type="tel" value={contactInfo.phone} onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Service Requested</label>
-                <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors bg-white appearance-none">
-                  <option value="Standard Clean">Standard Clean</option>
-                  <option value="The Spring Breeze Reset">The Spring Breeze Reset</option>
-                </select>
+                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Property Address</label>
+                <input type="text" value={contactInfo.address} onChange={(e) => setContactInfo({ ...contactInfo, address: e.target.value })} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors" placeholder="123 River Rd" />
               </div>
+            </div>
+            
+            {/* Service Selection spans full width below the grid */}
+            <div>
+              <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Service Requested</label>
+              <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors bg-white appearance-none">
+                <option value="Standard Clean">Standard Clean</option>
+                <option value="The Spring Breeze Reset">The Spring Breeze Reset</option>
+              </select>
             </div>
 
             <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 mt-6">

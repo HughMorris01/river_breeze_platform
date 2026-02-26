@@ -7,10 +7,39 @@ import nodemailer from 'nodemailer';
 // @access  Public (Allows the frontend calculator to book jobs)
 export const createAppointment = async (req, res) => {
   try {
-    const appointment = await Appointment.create(req.body);
+    const { client, serviceType, addOns, quotedPrice, timeBlock } = req.body;
+
+    // 1. Race Condition Check: Verify the block still exists and is currently open
+    const block = await TimeBlock.findById(timeBlock);
+    
+    if (!block) {
+      return res.status(404).json({ message: 'Time slot not found.' });
+    }
+    
+    if (block.isBooked) {
+      return res.status(400).json({ 
+        message: 'This time slot was just booked by someone else. Please select another.' 
+      });
+    }
+
+    // 2. Create the Pending Appointment
+    const appointment = await Appointment.create({
+      client,
+      timeBlock,
+      serviceType,
+      addOns,
+      quotedPrice,
+      status: 'Pending'
+    });
+
+    // 3. Instantly lock the TimeBlock so it drops off the public calendar
+    block.isBooked = true;
+    await block.save();
+
     res.status(201).json(appointment);
   } catch (error) {
-    res.status(400).json({ message: 'Invalid appointment data', error: error.message });
+    console.error('Error creating appointment:', error);
+    res.status(500).json({ message: 'Server error during booking' });
   }
 };
 

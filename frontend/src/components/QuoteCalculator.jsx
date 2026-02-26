@@ -62,17 +62,19 @@ export default function QuoteCalculator() {
         }),
       });
 
-      if (!appointmentRes.ok) throw new Error('Failed to save appointment');
+      const appointmentData = await appointmentRes.json();
+      
+      // Pass the specific backend message into the Error
+      if (!appointmentRes.ok) throw new Error(appointmentData.message || 'Failed to save appointment');
 
-      // Replace the success alert
       toast.success("Your slot has been reserved! You will receive a confirmation email when Katherine finalizes the appointment.", { duration: 6000 });
       setStep(1); 
       setSelectedSlot(null);
       
     } catch (err) {
       console.error(err);
-      // Replace the error alert
-      toast.error("Something went wrong. Please check your connection and try again.");
+      // Display the specific error message (e.g., "This time slot was just booked...")
+      toast.error(err.message || "Something went wrong. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }
