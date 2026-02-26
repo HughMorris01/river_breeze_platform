@@ -1,4 +1,5 @@
 import Client from '../models/Client.js';
+import Appointment from '../models/Appointment.js';
 
 // @desc    Create a new client
 // @route   POST /api/clients
@@ -35,35 +36,37 @@ export const verifyClient = async (req, res) => {
       return res.status(400).json({ message: 'Please provide both an address and an email or phone number.' });
     }
 
-    // 1. Clean the input so we can easily compare phone numbers (strips everything but numbers)
     const cleanInputPhone = identity.replace(/\D/g, '');
     const isPhone = cleanInputPhone.length >= 7; 
 
-    // 2. Find clients by exact address (Google Places Autocomplete makes this highly reliable)
-    // We use a regex to make it case-insensitive just to be safe
-    const clientsAtAddress = await Client.find({ 
-      address: { $regex: new RegExp(`^${address.trim()}$`, 'i') } 
-    });
+    const allClients = await Client.find();
 
-    if (clientsAtAddress.length === 0) {
-      // Generic error so bad actors can't scrape address data
-      return res.status(404).json({ message: 'No matching profile found.' });
-    }
-
-    // 3. Post-process to find the exact identity match
-    const matchedClient = clientsAtAddress.find(client => {
+    const matchedClient = allClients.find(client => {
       const emailMatch = client.email?.toLowerCase() === identity.toLowerCase().trim();
       const phoneMatch = client.phone?.replace(/\D/g, '') === cleanInputPhone;
       
-      return emailMatch || (isPhone && phoneMatch);
+      if (emailMatch || (isPhone && phoneMatch)) {
+         // EXACT FULL STRING MATCH: Compares the entire address string perfectly
+         const isAddressMatch = client.address.toLowerCase().trim() === address.toLowerCase().trim();
+         
+         return isAddressMatch;
+      }
+      return false;
     });
 
     if (!matchedClient) {
       return res.status(404).json({ message: 'No matching profile found.' });
     }
 
-    // 4. Success! Return the client data needed for the booking flow
-    res.status(200).json(matchedClient);
+    const lastAppointment = await Appointment.findOne({ 
+      client: matchedClient._id,
+      status: 'Completed' 
+    }).sort({ createdAt: -1 });
+
+    const clientData = matchedClient.toObject();
+    clientData.lastAppointment = lastAppointment || null;
+
+    res.status(200).json(clientData);
 
   } catch (error) {
     console.error("Verification Error:", error);

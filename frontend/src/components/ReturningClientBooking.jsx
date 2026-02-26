@@ -66,21 +66,29 @@ export default function ReturningClientBooking() {
             <Autocomplete
               apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               onPlaceSelected={(place) => {
+                // 1. Inspect Google's data to see if it actually found a house number
+                const hasHouseNumber = place.address_components?.some(component => 
+                  component.types.includes('street_number')
+                );
+
+                // 2. If there is no house number, yell at the user and reject the input
+                if (!hasHouseNumber) {
+                  setAddress(''); // Clear the bad input
+                  return toast.error("Please select an exact house number from the dropdown, not just a street name.");
+                }
+
+                // 3. If it passes, save it!
                 if (place.formatted_address) {
                   setAddress(place.formatted_address);
                 }
               }}
+              onChange={(e) => setAddress(e.target.value)} 
+              value={address} 
               options={{
                 types: ['address'],
                 componentRestrictions: { country: 'us' },
                 strictBounds: true,
-                // This creates a ~50 mile bounding box around Clayton, NY
-                bounds: {
-                  north: 44.96, 
-                  south: 43.51, 
-                  east: -75.06, 
-                  west: -77.10, 
-                }
+                bounds: { north: 44.96, south: 43.51, east: -75.06, west: -77.10 }
               }}
               className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 transition-colors bg-slate-50 focus:bg-white text-lg font-medium text-slate-800"
               placeholder="Start typing your address..."

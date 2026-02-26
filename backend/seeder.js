@@ -8,8 +8,21 @@ import Appointment from './models/Appointment.js';
 dotenv.config();
 connectDB();
 
-// Abbreviated to perfectly match Google Places formatting
-const localStreets = ['Riverside Dr', 'James St', 'Mary St', 'Webb St', 'State St', 'John St', 'Hugunin St', 'Alexandria St', 'Joseph Lonsway Dr'];
+// REAL, verified Clayton addresses that Google Maps perfectly indexes
+const realClaytonAddresses = [
+  '330 Riverside Dr, Clayton, NY 13624, USA',
+  '413 Riverside Dr, Clayton, NY 13624, USA',
+  '514 James St, Clayton, NY 13624, USA',
+  '300 State St, Clayton, NY 13624, USA',
+  '401 Mary St, Clayton, NY 13624, USA',
+  '615 Mary St, Clayton, NY 13624, USA',
+  '205 Webb St, Clayton, NY 13624, USA',
+  '114 John St, Clayton, NY 13624, USA',
+  '214 Hugunin St, Clayton, NY 13624, USA',
+  '500 Webb St, Clayton, NY 13624, USA',
+  '400 Alexandria St, Clayton, NY 13624, USA'
+];
+
 const firstNames = ['John', 'Sarah', 'Michael', 'Emma', 'David', 'Olivia', 'James', 'Katherine', 'William', 'Sophia'];
 const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez'];
 
@@ -22,15 +35,14 @@ const generateClients = async () => {
     for (let i = 0; i < 75; i++) {
       const first = firstNames[Math.floor(Math.random() * firstNames.length)];
       const last = lastNames[Math.floor(Math.random() * lastNames.length)];
-      const street = localStreets[Math.floor(Math.random() * localStreets.length)];
-      const houseNum = Math.floor(Math.random() * 899) + 100;
+      // Grab a real, perfectly formatted address from the array
+      const exactAddress = realClaytonAddresses[Math.floor(Math.random() * realClaytonAddresses.length)];
       
       clients.push({
         name: `${first} ${last}`,
         email: `${first.toLowerCase()}.${last.toLowerCase()}${i}@example.com`,
         phone: `555-010-${Math.floor(1000 + Math.random() * 9000)}`,
-        // Appended ZIP and USA to perfectly match the Autocomplete output
-        address: `${houseNum} ${street}, Clayton, NY 13624, USA`,
+        address: exactAddress,
         bedrooms: Math.floor(Math.random() * 4) + 1,
         bathrooms: Math.floor(Math.random() * 3) + 1,
         squareFootage: Math.floor(Math.random() * 2500) + 800,
@@ -63,12 +75,10 @@ const generateSchedule = async () => {
     today.setHours(0, 0, 0, 0);
     const services = ['Standard Clean', 'The Spring Breeze Reset'];
 
-    // Generate 30 days of schedule: 15 days in the past, 15 days in the future
     for (let i = -15; i < 15; i++) {
       const targetDate = new Date(today);
       targetDate.setDate(today.getDate() + i);
 
-      // Skip Sundays (0)
       if (targetDate.getDay() === 0) continue; 
 
       const isPast = i < 0;

@@ -8,8 +8,9 @@ import Hero from './components/Hero';
 import Testimonials from './components/Testimonials';
 import QuoteCalculator from './components/QuoteCalculator';
 import ReturningClientBooking from './components/ReturningClientBooking';
-import AdminDashboard from './pages/AdminDashboard';
+import ReturningConfirm from './pages/ReturningConfirm';
 import LoginPage from './pages/LoginPage';
+import AdminDashboard from './pages/AdminDashboard';
 import Footer from './components/Footer';
 
 export default function App() {
@@ -72,6 +73,12 @@ export default function App() {
             <Route path="/returning" element={
               <div className="max-w-7xl mx-auto px-4 md:px-6 w-full pt-32 pb-10">
                 <ReturningClientBooking />
+              </div>
+            } />
+
+            <Route path="/returning/confirm" element={
+              <div className="max-w-7xl mx-auto px-4 md:px-6 w-full pt-32 pb-10">
+                <ReturningConfirm />
               </div>
             } />
             
