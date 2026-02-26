@@ -88,6 +88,9 @@ const importAppointmentData = async () => {
           email: `${randomFirst.toLowerCase()}.${randomLast.toLowerCase()}@example.com`,
           phone: `555-010-${Math.floor(Math.random() * 1000)}`,
           address: `${Math.floor(Math.random() * 900) + 100} River Rd, Clayton, NY`,
+          bedrooms: `${Math.floor(Math.random() * 10%3) + 100}`,
+          bathrooms: `${Math.floor(Math.random() * 10%2) + 100}`,
+          squareFootage: `${Math.floor(Math.random() * 3000) + 100}`,
           isReturning: Math.random() > 0.5
         });
 

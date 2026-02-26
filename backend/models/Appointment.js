@@ -7,6 +7,11 @@ const appointmentSchema = new mongoose.Schema({
     required: true,
     ref: 'Client', 
   },
+  timeBlock: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'TimeBlock',
+      required: true,
+    },
   serviceType: {
     type: String,
     required: true,
@@ -29,7 +34,7 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     required: true,
     default: 'Pending',
-    enum: ['Pending', 'Confirmed', 'Completed', 'Cancelled'], 
+    enum: ['Pending', 'Confirmed', 'Completed', 'Canceled'], 
   }
 }, { 
   timestamps: true 

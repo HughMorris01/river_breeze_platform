@@ -49,7 +49,7 @@ export const createAppointment = async (req, res) => {
 export const getAppointments = async (req, res) => {
   try {
     // .populate() pulls in the associated client document so Katherine can see who the job is for
-    const appointments = await Appointment.find({}).populate('client', 'name email phone address');
+    const appointments = await Appointment.find({}).populate('client').populate('timeBlock');
     res.json(appointments);
   } catch (error) {
     res.status(500).json({ message: 'Server error fetching appointments', error: error.message });
@@ -101,5 +101,42 @@ export const confirmAppointment = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during confirmation' });
+  }
+};
+
+export const cancelAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    // 1. Mark the appointment as canceled
+    appointment.status = 'Canceled';
+    await appointment.save();
+
+    // 2. Free up the time slot on the public calendar
+    if (appointment.timeBlock) {
+      await TimeBlock.findByIdAndUpdate(appointment.timeBlock, { isBooked: false });
+    }
+
+    res.json({ message: 'Appointment canceled and time slot freed.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error during cancellation' });
+  }
+};
+
+export const completeAppointment = async (req, res) => {
+  try {
+    const appointment = await Appointment.findById(req.params.id);
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+
+    // Mark the appointment as successfully completed
+    appointment.status = 'Completed';
+    await appointment.save();
+
+    res.json({ message: 'Appointment marked as completed.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error during completion' });
   }
 };
