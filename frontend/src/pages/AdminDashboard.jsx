@@ -1,6 +1,7 @@
 // frontend/src/pages/AdminDashboard.jsx
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore.js';
+import AvailabilityManager from '../components/AvailabilityManager';
 
 export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
@@ -10,7 +11,7 @@ export default function AdminDashboard() {
     const fetchLeads = async () => {
       try {
         const res = await fetch('http://localhost:5000/api/appointments', {
-          headers: { Authorization: `Bearer ${token}` }, // Sending the security token
+          headers: { Authorization: `Bearer ${token}` }, 
         });
         const data = await res.json();
         setAppointments(data);
@@ -23,7 +24,7 @@ export default function AdminDashboard() {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-slate-50 p-8">
+    <div className="min-h-screen bg-slate-50 p-8 pt-32 md:pt-40">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
@@ -36,7 +37,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Leads Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-12">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-800 text-white">
               <tr>
@@ -81,6 +82,10 @@ export default function AdminDashboard() {
             <div className="p-20 text-center text-slate-400 font-medium">No leads found yet. Time to market!</div>
           )}
         </div>
+
+        {/* Availability Manager */}
+        <AvailabilityManager />
+
       </div>
     </div>
   );
