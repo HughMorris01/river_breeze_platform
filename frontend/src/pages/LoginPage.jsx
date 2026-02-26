@@ -1,7 +1,9 @@
+// frontend/src/pages/LoginPage.jsx
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
-export default function LoginPage({ onBack }) {
+export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -12,7 +14,6 @@ export default function LoginPage({ onBack }) {
     setError('');
 
     try {
-      // Removed localhost:5000 to rely on the Vite proxy
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -25,7 +26,6 @@ export default function LoginPage({ onBack }) {
         throw new Error(data.message || 'Invalid credentials');
       }
 
-      // Save admin data and token to our Zustand store
       login(data, data.token);
     } catch (err) {
       setError(err.message);
@@ -79,12 +79,12 @@ export default function LoginPage({ onBack }) {
           </button>
         </form>
 
-        <button 
-          onClick={onBack}
-          className="w-full mt-4 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors"
+        <Link 
+          to="/"
+          className="block text-center w-full mt-4 text-sm font-semibold text-slate-400 hover:text-slate-600 transition-colors"
         >
-          ← Back to Calculator
-        </button>
+          ← Return to Homepage
+        </Link>
       </div>
     </div>
   );

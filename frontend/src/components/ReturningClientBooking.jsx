@@ -1,9 +1,10 @@
 // frontend/src/components/ReturningClientBooking.jsx
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import BookingCalendar from './BookingCalendar';
 import toast from 'react-hot-toast';
 
-export default function ReturningClientBooking({ onBack }) {
+export default function ReturningClientBooking() {
   const [loading, setLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [contactInfo, setContactInfo] = useState({ name: '', email: '', phone: '', address: '' });
@@ -11,14 +12,13 @@ export default function ReturningClientBooking({ onBack }) {
 
   const handleBooking = async () => {
     if (!selectedSlot) return toast.error("Please select an available date and time.");
-    // Make sure address is also required before submitting
+    
     if (!contactInfo.name || !contactInfo.email || !contactInfo.phone || !contactInfo.address) {
       return toast.error("Please fill out all contact details.");
     }
     
     setLoading(true);
     try {
-      // 1. Save Client (Marked explicitly as returning, with default property data to satisfy the DB)
       const clientRes = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -34,10 +34,8 @@ export default function ReturningClientBooking({ onBack }) {
       });
       const clientData = await clientRes.json();
       
-      // If we still get a 400, this will catch it and log the exact backend message
       if (!clientRes.ok) throw new Error(clientData.message || 'Failed to save client');
 
-      // 2. Save Appointment
       const appointmentRes = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,7 +50,6 @@ export default function ReturningClientBooking({ onBack }) {
 
       const appointmentData = await appointmentRes.json();
       
-      // Pass the specific backend message into the Error
       if (!appointmentRes.ok) throw new Error(appointmentData.message || 'Failed to save appointment');
 
       toast.success("Your slot has been reserved! You will receive a confirmation email when Katherine finalizes the appointment.", { duration: 6000 });
@@ -60,7 +57,6 @@ export default function ReturningClientBooking({ onBack }) {
       
     } catch (err) {
       console.error(err);
-      // Display the specific error message (e.g., "This time slot was just booked...")
       toast.error(err.message || "Something went wrong. Please check your connection and try again.");
     } finally {
       setLoading(false);
@@ -79,7 +75,6 @@ export default function ReturningClientBooking({ onBack }) {
       <div className="p-6 md:p-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
           
-          {/* Left Column: Form */}
           <div className="space-y-6">
             <h3 className="text-xl font-black text-slate-800 mb-6 tracking-tight border-b border-slate-100 pb-4">Your Details</h3>
             
@@ -102,7 +97,6 @@ export default function ReturningClientBooking({ onBack }) {
               </div>
             </div>
             
-            {/* Service Selection spans full width below the grid */}
             <div>
               <label className="block text-xs font-bold uppercase text-slate-500 mb-1">Service Requested</label>
               <select value={serviceType} onChange={(e) => setServiceType(e.target.value)} className="w-full p-4 border-2 rounded-lg outline-none focus:border-teal-500 transition-colors bg-white appearance-none">
@@ -117,7 +111,6 @@ export default function ReturningClientBooking({ onBack }) {
             </div>
           </div>
 
-          {/* Right Column: Calendar */}
           <div>
             <BookingCalendar onSelectSlot={(block) => setSelectedSlot(block)} />
             
@@ -129,9 +122,9 @@ export default function ReturningClientBooking({ onBack }) {
               {loading ? "Processing..." : "Submit Booking Request"}
             </button>
             
-            <button onClick={onBack} className="w-full mt-4 py-3 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">
+            <Link to="/" className="block text-center w-full mt-4 py-3 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors">
               ← Cancel & Return Home
-            </button>
+            </Link>
           </div>
 
         </div>
