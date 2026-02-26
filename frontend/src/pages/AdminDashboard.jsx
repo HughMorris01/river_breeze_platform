@@ -10,7 +10,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchLeads = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/appointments', {
+        const res = await fetch('/api/appointments', {
           headers: { Authorization: `Bearer ${token}` }, 
         });
         const data = await res.json();
@@ -23,8 +23,35 @@ export default function AdminDashboard() {
     if (token) fetchLeads();
   }, [token]);
 
+  // NEW: Handle Confirming the Appointment
+  const handleConfirm = async (id) => {
+    try {
+      const res = await fetch(`/api/appointments/${id}/confirm`, {
+        method: 'PUT',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (res.ok) {
+        // Update the local state so the UI reflects the change instantly without reloading
+        setAppointments(appointments.map(appt => 
+          appt._id === id ? { ...appt, status: 'Confirmed' } : appt
+        ));
+        alert('Appointment confirmed! An email has been sent to the client.');
+      } else {
+        const data = await res.json();
+        alert(`Failed to confirm: ${data.message}`);
+      }
+    } catch (err) {
+      console.error("Error confirming:", err);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 p-8 pt-32 md:pt-40">
+    // FIXED: Changed pt-32 md:pt-40 to standard p-6 md:p-12
+    <div className="min-h-screen bg-slate-50 p-6 md:p-12">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
@@ -36,9 +63,10 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Leads Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-12">
-          <table className="w-full text-left border-collapse">
+        {/* FIXED: Added overflow-x-auto to the wrapper */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mb-12">
+          {/* FIXED: Added min-w-[800px] to force a horizontal scroll on mobile instead of squishing */}
+          <table className="w-full text-left border-collapse min-w-200">
             <thead className="bg-slate-800 text-white">
               <tr>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold">Client</th>
@@ -46,6 +74,7 @@ export default function AdminDashboard() {
                 <th className="p-4 text-xs uppercase tracking-wider font-bold">Price</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold">Status</th>
                 <th className="p-4 text-xs uppercase tracking-wider font-bold">Details</th>
+                <th className="p-4 text-xs uppercase tracking-wider font-bold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -74,6 +103,19 @@ export default function AdminDashboard() {
                       <div className="mt-1 italic text-teal-600">Add-ons: {appt.addOns.join(', ')}</div>
                     )}
                   </td>
+                  <td className="p-4">
+                    {/* NEW: Action Button */}
+                    {appt.status === 'Pending' ? (
+                      <button 
+                        onClick={() => handleConfirm(appt._id)}
+                        className="px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors"
+                      >
+                        Confirm Booking
+                      </button>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-bold uppercase tracking-widest">Confirmed</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -83,9 +125,7 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        {/* Availability Manager */}
         <AvailabilityManager />
-
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
+// backend/controllers/availabilityController.js
 import TimeBlock from '../models/TimeBlock.js';
 
-// @desc    Add a new available time block (Auto-sets to 2 hours)
+// @desc    Add a new available time block (Auto-sets to 2 hours with overlap check)
 // @route   POST /api/availability
 // @access  Private (Admin Only)
 export const addTimeBlock = async (req, res) => {
@@ -8,10 +9,22 @@ export const addTimeBlock = async (req, res) => {
     const { date, startTime } = req.body;
     
     // Auto-calculate the end time (assuming 2-hour default blocks)
-    // Expects startTime in 24h format like "09:00" or "13:30"
     const [hours, minutes] = startTime.split(':');
     const endHours = String(parseInt(hours) + 2).padStart(2, '0');
     const endTime = `${endHours}:${minutes}`;
+    
+    // OVERLAP CHECK: Find all blocks already scheduled for this exact date
+    const existingBlocks = await TimeBlock.find({ date });
+    
+    const hasOverlap = existingBlocks.some(block => {
+      // If the new start time is before the existing end time AND 
+      // the new end time is after the existing start time, they overlap.
+      return (startTime < block.endTime) && (endTime > block.startTime);
+    });
+
+    if (hasOverlap) {
+      return res.status(400).json({ message: 'This 2-hour slot overlaps with an existing block.' });
+    }
     
     const block = await TimeBlock.create({ 
       date, 
@@ -28,7 +41,7 @@ export const addTimeBlock = async (req, res) => {
 
 // @desc    Get all future available time blocks
 // @route   GET /api/availability
-// @access  Public (For the Quote Calculator)
+// @access  Public
 export const getAvailableBlocks = async (req, res) => {
   try {
     const today = new Date();

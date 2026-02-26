@@ -12,7 +12,8 @@ export default function LoginPage({ onBack }) {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:5000/api/admin/login', {
+      // Removed localhost:5000 to rely on the Vite proxy
+      const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
