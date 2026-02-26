@@ -1,15 +1,26 @@
 // frontend/src/components/Header.jsx
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import logo from '../assets/logo.png';
 
 export default function Header() {
-  const { token } = useAuthStore();
+  const { token, logout } = useAuthStore();
   const location = useLocation();
+  const navigate = useNavigate();
   
   // Check the actual URL path to determine button styling and text
   const isHome = location.pathname === '/';
   const isLogin = location.pathname === '/login';
+  const isDashboard = location.pathname === '/admin';
+
+  const handleActionClick = (e) => {
+    // If she clicks the button while on the dashboard, log her out and send her home
+    if (token && isDashboard) {
+      e.preventDefault();
+      logout();
+      navigate('/');
+    }
+  };
 
   return (
     <nav className="absolute top-0 left-0 right-0 z-50 flex justify-between items-start max-w-7xl mx-auto px-6 pt-6 md:px-10 md:pt-4">
@@ -25,18 +36,18 @@ export default function Header() {
         />
       </Link>
       
-      {!token && (
-        <Link 
-          to={isLogin ? '/' : '/login'}
-          className={`flex items-center px-4 py-2 text-[10px] md:text-xs font-bold border rounded-lg transition-all uppercase tracking-widest shadow-lg whitespace-nowrap
-            ${isHome 
-              ? 'text-white border-white/30 bg-white/10 backdrop-blur-md hover:bg-white/20' 
-              : 'text-slate-700 border-slate-300 bg-white hover:bg-slate-50'
-            }`}
-        >
-          {isLogin ? 'Return Home' : 'Admin Login'}
-        </Link>
-      )}
+      {/* SMART BUTTON: Toggles based on Authentication and Current Page */}
+      <Link 
+        to={token ? (isDashboard ? '/' : '/admin') : (isLogin ? '/' : '/login')}
+        onClick={handleActionClick}
+        className={`flex items-center px-4 py-2 text-[10px] md:text-xs font-bold border rounded-lg transition-all uppercase tracking-widest shadow-lg whitespace-nowrap
+          ${isHome && !token
+            ? 'text-white border-white/30 bg-white/10 backdrop-blur-md hover:bg-white/20' 
+            : 'text-slate-700 border-slate-300 bg-white hover:bg-slate-50'
+          }`}
+      >
+        {token ? (isDashboard ? 'Logout' : 'Dashboard') : (isLogin ? 'Return Home' : 'Admin Login')}
+      </Link>
     </nav>
   );
 }

@@ -46,10 +46,7 @@ export const verifyClient = async (req, res) => {
       const phoneMatch = client.phone?.replace(/\D/g, '') === cleanInputPhone;
       
       if (emailMatch || (isPhone && phoneMatch)) {
-         // EXACT FULL STRING MATCH: Compares the entire address string perfectly
-         const isAddressMatch = client.address.toLowerCase().trim() === address.toLowerCase().trim();
-         
-         return isAddressMatch;
+         return client.address.toLowerCase().trim() === address.toLowerCase().trim();
       }
       return false;
     });
@@ -58,13 +55,19 @@ export const verifyClient = async (req, res) => {
       return res.status(404).json({ message: 'No matching profile found.' });
     }
 
+    // STRICT CHECK: Fetch their most recent completed appointment
     const lastAppointment = await Appointment.findOne({ 
       client: matchedClient._id,
       status: 'Completed' 
     }).sort({ createdAt: -1 });
 
+    // NEW: Reject them if they don't have a completed job history
+    if (!lastAppointment) {
+      return res.status(404).json({ message: 'No completed services found. Please use the New Quote Calculator to get started.' });
+    }
+
     const clientData = matchedClient.toObject();
-    clientData.lastAppointment = lastAppointment || null;
+    clientData.lastAppointment = lastAppointment;
 
     res.status(200).json(clientData);
 

@@ -14,6 +14,9 @@ export default function ReturningConfirm() {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+
+  // Default to 2 hours if editing, otherwise strictly use their last job's duration
+  const requiredHours = isEditing ? 2.0 : (lastJob?.estimatedHours || 2.0);
   
   // Job States (Defaults to the last job if it exists, otherwise standard)
   const [serviceType, setServiceType] = useState(lastJob?.serviceType || 'Standard Clean');
@@ -150,7 +153,11 @@ export default function ReturningConfirm() {
 
           {/* Right Column: Calendar */}
           <div>
-            <BookingCalendar onSelectSlot={(block) => setSelectedSlot(block)} />
+            {/* NEW: Pass the requiredHours down to the engine! */}
+            <BookingCalendar 
+              onSelectSlot={(block) => setSelectedSlot(block)} 
+              estimatedHours={requiredHours} 
+            />
 
             <button
               onClick={handleBooking}
