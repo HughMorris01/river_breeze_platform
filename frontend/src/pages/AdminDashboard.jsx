@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/authStore.js';
 import AvailabilityManager from '../components/AvailabilityManager';
+import toast from 'react-hot-toast'; // Import the toast tool
 
 export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
@@ -23,7 +24,6 @@ export default function AdminDashboard() {
     if (token) fetchLeads();
   }, [token]);
 
-  // NEW: Handle Confirming the Appointment
   const handleConfirm = async (id) => {
     try {
       const res = await fetch(`/api/appointments/${id}/confirm`, {
@@ -35,30 +35,42 @@ export default function AdminDashboard() {
       });
       
       if (res.ok) {
-        // Update the local state so the UI reflects the change instantly without reloading
         setAppointments(appointments.map(appt => 
           appt._id === id ? { ...appt, status: 'Confirmed' } : appt
         ));
-        alert('Appointment confirmed! An email has been sent to the client.');
+        // Sleek success toast instead of native alert
+        toast.success('Appointment confirmed! An email has been sent to the client.');
       } else {
         const data = await res.json();
-        alert(`Failed to confirm: ${data.message}`);
+        // Sleek error toast
+        toast.error(`Failed to confirm: ${data.message}`);
       }
     } catch (err) {
       console.error("Error confirming:", err);
+      toast.error('A network error occurred.');
     }
   };
 
+  // Calculate how many pending appointments exist
+  const pendingCount = appointments.filter(appt => appt.status === 'Pending').length;
+
   return (
-    // FIXED: Changed pt-32 md:pt-40 to standard p-6 md:p-12
     <div className="min-h-screen bg-slate-50 p-6 md:p-12">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">Booking Dashboard</h1>
-            <p className="text-slate-500">Manage incoming leads and quotes.</p>
+            {/* Added flex-wrap and responsive text sizing */}
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 flex flex-wrap items-center gap-3 md:gap-4">
+              Booking Dashboard
+            </h1>
+            <p className="text-slate-500 mt-2 text-sm md:text-base">Manage incoming leads and quotes.</p>
+            {pendingCount > 0 && (
+                <span className="bg-red-500 text-white text-xs md:text-sm font-bold px-3 py-1 rounded-full shadow-sm whitespace-nowrap">
+                  {pendingCount} Pending
+                </span>
+              )}
           </div>
-          <button onClick={logout} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors font-semibold">
+          <button onClick={logout} className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg hover:bg-slate-100 transition-colors font-semibold shadow-sm">
             Logout
           </button>
         </div>

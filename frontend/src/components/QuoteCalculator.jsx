@@ -1,7 +1,7 @@
-// frontend/src/components/QuoteCalculator.jsx
 import { useState, useMemo } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
-import BookingCalendar from './BookingCalendar'; // Importing the calendar component!
+import BookingCalendar from './BookingCalendar'; 
+import toast from 'react-hot-toast';
 
 export default function QuoteCalculator() {
   const [step, setStep] = useState(1);
@@ -64,13 +64,15 @@ export default function QuoteCalculator() {
 
       if (!appointmentRes.ok) throw new Error('Failed to save appointment');
 
-      alert("Booking Request Sent! Katherine will review and confirm your appointment shortly.");
+      // Replace the success alert
+      toast.success("Your slot has been reserved! You will receive a confirmation email when Katherine finalizes the appointment.", { duration: 6000 });
       setStep(1); 
       setSelectedSlot(null);
       
     } catch (err) {
       console.error(err);
-      alert("Something went wrong. Please check your connection and try again.");
+      // Replace the error alert
+      toast.error("Something went wrong. Please check your connection and try again.");
     } finally {
       setLoading(false);
     }

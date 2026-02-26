@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuthStore } from './store/authStore';
+import { Toaster } from 'react-hot-toast';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import QuoteCalculator from './components/QuoteCalculator';
@@ -13,6 +14,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-teal-100 selection:text-teal-900">
+    {/* Add the Toaster here so it's available globally */}
+      <Toaster position="top-center" toastOptions={{ duration: 5000 }} />
       
       {!token && <Header view={view} setView={setView} />}
 

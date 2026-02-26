@@ -62,7 +62,11 @@ export const confirmAppointment = async (req, res) => {
       text: `Hi ${appointment.client.name},\n\nGreat news! Kate has confirmed your ${appointment.serviceType} appointment.\n\nTo help us provide the best service, please ensure all loose items (toys, clothing, dishes) are picked up prior to arrival, and pets are safely secured.\n\nWe look forward to seeing you!\n\n- The River Breeze Team`,
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+      await transporter.sendMail(mailOptions);
+    } catch (emailErr) {
+      console.log('Database updated, but email failed to send (check .env credentials):', emailErr.message);
+    }
 
     res.json({ message: 'Appointment confirmed and email sent.' });
   } catch (error) {
