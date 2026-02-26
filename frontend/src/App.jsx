@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import { useState } from 'react';
 import { useAuthStore } from './store/authStore';
 import Header from './components/Header';

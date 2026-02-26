@@ -1,4 +1,3 @@
-// frontend/src/components/Header.jsx
 import { useAuthStore } from '../store/authStore';
 import logo from '../assets/logo.png';
 

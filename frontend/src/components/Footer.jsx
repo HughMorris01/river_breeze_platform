@@ -1,4 +1,3 @@
-// frontend/src/components/Footer.jsx
 export default function Footer() {
   return (
     <footer className="bg-slate-900 text-slate-300 py-12 md:py-16 mt-auto">

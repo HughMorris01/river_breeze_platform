@@ -1,4 +1,3 @@
-// frontend/src/components/Hero.jsx
 import riverView from '../assets/river-view.jpg';
 import riverViewMobile from '../assets/river-view-mobile.jpg';
 

@@ -1,4 +1,3 @@
-// frontend/src/components/QuoteCalculator.jsx
 import { useState, useMemo } from 'react';
 import { useQuoteStore } from '../store/quoteStore';
 
