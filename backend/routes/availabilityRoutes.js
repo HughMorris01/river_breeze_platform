@@ -1,18 +1,15 @@
 import express from 'express';
-import { 
-  addTimeBlock, 
-  getAvailableBlocks, 
-  deleteTimeBlock 
-} from '../controllers/availabilityController.js';
+import { getAvailability, getShifts, addShift, deleteShift } from '../controllers/availabilityController.js';
 import { protect } from '../middleware/authMiddleware.js'; 
 
 const router = express.Router();
 
-// Public route for clients picking a date
-router.get('/', getAvailableBlocks);
+// Public route for the Booking Calendar engine
+router.get('/', getAvailability);
 
-// Protected routes for Katherine's admin dashboard
-router.post('/', protect, addTimeBlock);
-router.delete('/:id', protect, deleteTimeBlock);
+// Protected Admin routes for managing raw Shifts
+router.get('/shifts', protect, getShifts);
+router.post('/', protect, addShift);
+router.delete('/:id', protect, deleteShift);
 
 export default router;

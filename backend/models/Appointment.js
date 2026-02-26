@@ -2,44 +2,46 @@
 import mongoose from 'mongoose';
 
 const appointmentSchema = new mongoose.Schema({
-  client: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
+  client: { 
+    type: mongoose.Schema.Types.ObjectId, 
     ref: 'Client', 
+    required: true 
   },
-  timeBlock: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'TimeBlock',
-      required: true,
-    },
-  serviceType: {
-    type: String,
-    required: true,
+  serviceType: { 
+    type: String, 
+    required: true 
   },
-  
-  // New Add-Ons Array
-  addOns: [
-    { type: String }
-  ],
-  
-  appointmentDate: {
-    type: Date,
-    required: false, 
+  addOns: [{ 
+    type: String 
+  }],
+  quotedPrice: { 
+    type: Number, 
+    required: true 
   },
-  quotedPrice: {
-    type: Number,
-    required: true,
-  },
-  status: {
-    type: String,
-    required: true,
-    default: 'Pending',
+  status: { 
+    type: String, 
     enum: ['Pending', 'Confirmed', 'Completed', 'Canceled'], 
+    default: 'Pending' 
+  },
+  
+  // --- NEW TEMPORAL FOOTPRINT ---
+  date: {
+    type: Date,
+    required: true
+  },
+  startTime: {
+    type: String,
+    required: true // e.g., "09:30"
+  },
+  endTime: {
+    type: String,
+    required: true // e.g., "11:30"
+  },
+  estimatedHours: {
+    type: Number,
+    required: true // e.g., 2.0 (Crucial for calculating the Anchor Rule)
   }
-}, { 
-  timestamps: true 
-});
+  
+}, { timestamps: true });
 
-const Appointment = mongoose.model('Appointment', appointmentSchema);
-
-export default Appointment;
+export default mongoose.model('Appointment', appointmentSchema);
