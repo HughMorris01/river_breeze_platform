@@ -71,7 +71,7 @@ export default function BookingCalendar({ onSelectSlot, estimatedHours = 2.0 }) 
         <h3 className="text-white font-bold tracking-wide">Select an Available Time</h3>
       </div>
       
-      <div className="p-6">
+      <div className="p-3">
         <div className="mb-6">
           <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
             Available Dates

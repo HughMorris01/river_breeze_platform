@@ -7,8 +7,9 @@ import Header from './components/Header';
 import Hero from './components/Hero';
 import Testimonials from './components/Testimonials';
 import QuoteCalculator from './components/QuoteCalculator';
-import ReturningClientBooking from './pages/ReturningClientBooking';
+import NewClientBooking from './pages/NewClientBooking';
 import ReturningClientConfirm from './components/ReturningClientConfirm';
+import ReturningClientBooking from './pages/ReturningClientBooking';
 import LoginPage from './pages/LoginPage';
 import AdminDashboard from './pages/AdminDashboard';
 import Footer from './components/Footer';
@@ -68,6 +69,12 @@ export default function App() {
                <div className="pt-22 md:pt-38 pb-10 px-4">
                  <QuoteCalculator />
                </div>
+            } />
+
+            <Route path="/booking" element={
+              <div className="pt-22 md:pt-38 pb-10 px-4">
+                <NewClientBooking />
+              </div>
             } />
             
             <Route path="/returning" element={

@@ -190,7 +190,7 @@ export default function AvailabilityManager({ refreshTrigger }) {
         </form>
       </div>
 
-      <div className="p-6 md:p-8 max-h-[400px] overflow-y-auto">
+      <div className="p-6 md:p-8 max-h-100 overflow-y-auto">
         <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Upcoming Free Time</h3>
         
         {shifts.length === 0 ? (

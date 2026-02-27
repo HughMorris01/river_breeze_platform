@@ -70,7 +70,9 @@ export default function QuoteCalculator() {
 
     const snappedTime = Math.round(time * 4) / 4;
     setQuote({ price, time: snappedTime });
-  }, [serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns]);
+
+  // NEW: Added setQuote to the end of the array to satisfy the linter
+  }, [serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns, setQuote]);
 
   const toggleAddOn = (id) => {
     setSelectedAddOns(prev => 
@@ -82,7 +84,7 @@ export default function QuoteCalculator() {
 
   return (
     <div className="max-w-6xl mx-auto">
-      <div className="text-center mb-10">
+      <div className="text-center mb-10 mt-10">
         <h1 className="text-3xl md:text-5xl font-black text-slate-800 tracking-tight">Instant Quote Calculator</h1>
         <p className="text-slate-500 mt-4 text-sm md:text-base max-w-2xl mx-auto">
           Customize your cleaning package below. Our smart engine will instantly calculate an accurate price and time estimate based on your exact needs.
@@ -91,7 +93,7 @@ export default function QuoteCalculator() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div className="lg:col-span-2 space-y-8 bg-white p-6 md:p-10 rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100">
+        <div className="lg:col-span-2 space-y-8 bg-white p-3 md:p-10 rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100">
           
           {/* EXPANDED DESCRIPTIONS FOR SERVICE TYPE */}
           <div>
