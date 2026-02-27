@@ -136,7 +136,7 @@ export default function AvailabilityManager({ refreshTrigger }) {
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative">
       <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50">
         <h2 className="text-xl font-bold text-slate-800">Manage Availability</h2>
-        <p className="text-sm text-slate-500 mt-1">Add specific pockets of free time to your calendar.</p>
+        <p className="text-sm text-slate-500 mt-1">Add specific pockets of available time to your calendar.</p>
         
         <form onSubmit={handleAddShift} className="mt-6 flex flex-col md:flex-row gap-4 items-end">
           <div className="w-full md:w-auto flex-1">
@@ -191,7 +191,7 @@ export default function AvailabilityManager({ refreshTrigger }) {
       </div>
 
       <div className="p-6 md:p-8 max-h-100 overflow-y-auto">
-        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Upcoming Free Time</h3>
+        <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 mb-4">Upcoming Available Times</h3>
         
         {shifts.length === 0 ? (
           <p className="text-slate-500 italic">No upcoming availability set.</p>
