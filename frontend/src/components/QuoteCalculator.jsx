@@ -1,6 +1,7 @@
 // frontend/src/components/QuoteCalculator.jsx
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import MagicReveal from './MagicReveal';
 
 const ADD_ON_OPTIONS = [
   { id: 'appliances', label: 'Kitchen Appliances (Fridge, Oven, Microwave)', price: 45, time: 0.75 },
@@ -18,9 +19,10 @@ export default function QuoteCalculator() {
   const [additionalRooms, setAdditionalRooms] = useState(0);
   const [pets, setPets] = useState(0);
   
-  // New State for Accordion
+  // New States
   const [showAddOns, setShowAddOns] = useState(false);
   const [selectedAddOns, setSelectedAddOns] = useState([]);
+  const [showMagic, setShowMagic] = useState(false); 
   
   const [quote, setQuote] = useState({ price: 0, time: 0 });
   const navigate = useNavigate();
@@ -41,7 +43,6 @@ export default function QuoteCalculator() {
         time += (bedrooms - 1) * 0.15;
       }
       
-      // FIXED: $20 per full bath = $10 per 0.5 bath increment
       if (bathrooms > 1) {
         price += (bathrooms - 1) * 20; 
         time += (bathrooms - 1) * 0.2;
@@ -71,13 +72,17 @@ export default function QuoteCalculator() {
     const snappedTime = Math.round(time * 4) / 4;
     setQuote({ price, time: snappedTime });
 
-  // NEW: Added setQuote to the end of the array to satisfy the linter
   }, [serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns, setQuote]);
 
   const toggleAddOn = (id) => {
     setSelectedAddOns(prev => 
       prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]
     );
+  };
+
+  const handleBookClick = () => {
+    // Show the magic reveal instead of routing immediately!
+    setShowMagic(true);
   };
 
   const displayPrice = Number.isInteger(quote.price) ? quote.price : quote.price.toFixed(2);
@@ -91,11 +96,10 @@ export default function QuoteCalculator() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
         
         <div className="lg:col-span-2 space-y-8 bg-white p-3 md:p-10 rounded-3xl shadow-xl shadow-slate-200/40 border border-slate-100">
           
-          {/* EXPANDED DESCRIPTIONS FOR SERVICE TYPE */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-4">Select Service Type</label>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -131,7 +135,6 @@ export default function QuoteCalculator() {
 
           <hr className="border-slate-100" />
 
-          {/* BEDROOMS & BATHROOMS */}
           <div className={`grid grid-cols-2 gap-4 md:gap-8 transition-opacity ${serviceType === 'Express Touch-Up' ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
             <div>
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-3">Bedrooms</label>
@@ -151,7 +154,6 @@ export default function QuoteCalculator() {
             </div>
           </div>
 
-          {/* SQUARE FOOTAGE */}
           <div className={`transition-opacity ${serviceType === 'Express Touch-Up' ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
             <div className="flex justify-between items-end mb-4">
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">Estimated Size</label>
@@ -168,7 +170,6 @@ export default function QuoteCalculator() {
 
           <hr className="border-slate-100" />
 
-          {/* FIXED MOBILE LAYOUT: ADDITIONAL ROOMS */}
           <div className={`transition-opacity ${serviceType === 'Express Touch-Up' ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                 <div className="flex-1">
@@ -178,7 +179,6 @@ export default function QuoteCalculator() {
                     Use this counter to add extra spaces like a Study, Kids Playroom, Sunroom, or Home Gym.
                   </p>
                 </div>
-                {/* W-FULL ON MOBILE, W-AUTO ON DESKTOP */}
                 <div className="flex items-center bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shrink-0 h-14 w-full md:w-auto">
                   <button onClick={() => setAdditionalRooms(Math.max(0, additionalRooms - 1))} className="px-4 text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors font-bold text-xl w-16 h-full">-</button>
                   <div className="flex-1 md:w-12 text-center font-black text-slate-800 text-xl">{additionalRooms}</div>
@@ -189,7 +189,6 @@ export default function QuoteCalculator() {
 
           <hr className="border-slate-100" />
 
-          {/* PETS */}
           <div className={`transition-opacity ${serviceType === 'Express Touch-Up' ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
             <div className="flex justify-between items-end mb-4">
               <label className="block text-xs font-bold uppercase tracking-widest text-slate-500">Pets (Dogs / Cats)</label>
@@ -211,7 +210,6 @@ export default function QuoteCalculator() {
 
           <hr className="border-slate-100" />
 
-          {/* NEW ACCORDION: ADD-ONS */}
           <div>
             <button 
               onClick={() => setShowAddOns(!showAddOns)}
@@ -251,7 +249,6 @@ export default function QuoteCalculator() {
 
         </div>
 
-        {/* RIGHT COLUMN: THE FLOATING SUMMARY */}
         <div className="lg:col-span-1">
           <div className="sticky top-28 bg-slate-800 rounded-3xl p-8 text-white shadow-2xl">
             <h3 className="text-xl font-bold mb-6 text-slate-100 border-b border-slate-700 pb-4">Your Estimate</h3>
@@ -310,7 +307,7 @@ export default function QuoteCalculator() {
             </div>
 
             <button 
-              onClick={() => navigate('/booking', { state: { quoteDetails: { serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns, quote } } })}
+              onClick={handleBookClick}
               className="w-full py-4 text-center bg-teal-500 hover:bg-teal-400 text-slate-900 font-black text-lg rounded-xl transition-all shadow-lg hover:shadow-teal-500/30 hover:-translate-y-1"
             >
               Book This Package
@@ -322,6 +319,17 @@ export default function QuoteCalculator() {
         </div>
 
       </div>
+
+      {/* RENDER THE MAGIC REVEAL MODAL */}
+      {showMagic && (
+        <MagicReveal 
+          onComplete={() => navigate('/booking', { 
+            state: { 
+              quoteDetails: { serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns, quote } 
+            } 
+          })} 
+        />
+      )}
     </div>
   );
 }

@@ -1,13 +1,18 @@
-// frontend/src/components/ReturningClientBooking.jsx
+// frontend/src/components/ReturningClientConfirm.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import Autocomplete from 'react-google-autocomplete'; // <-- NEW IMPORT
+import Autocomplete from 'react-google-autocomplete';
 import toast from 'react-hot-toast';
+import MagicReveal from './MagicReveal'; // <-- IMPORT THE MAGIC
 
 export default function ReturningClientConfirm() {
   const [address, setAddress] = useState('');
   const [identity, setIdentity] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // NEW STATES: Control the animation and hold the client data
+  const [showMagic, setShowMagic] = useState(false);
+  const [verifiedData, setVerifiedData] = useState(null);
   
   const navigate = useNavigate();
 
@@ -31,7 +36,9 @@ export default function ReturningClientConfirm() {
 
       if (res.ok) {
         toast.success("Profile found! Let's get you scheduled.");
-        navigate('/returning/confirm', { state: { clientData: data } });
+        // Save the data to state and trigger the animation instead of navigating instantly
+        setVerifiedData(data);
+        setShowMagic(true);
       } else {
         toast.error("We couldn't find an active profile matching those details.");
         navigate('/quote');
@@ -62,22 +69,18 @@ export default function ReturningClientConfirm() {
             <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">
               Property Address
             </label>
-            {/* GOOGLE AUTOCOMPLETE COMPONENT */}
             <Autocomplete
               apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
               onPlaceSelected={(place) => {
-                // 1. Inspect Google's data to see if it actually found a house number
                 const hasHouseNumber = place.address_components?.some(component => 
                   component.types.includes('street_number')
                 );
 
-                // 2. If there is no house number, yell at the user and reject the input
                 if (!hasHouseNumber) {
-                  setAddress(''); // Clear the bad input
+                  setAddress(''); 
                   return toast.error("Please select an exact house number from the dropdown, not just a street name.");
                 }
 
-                // 3. If it passes, save it!
                 if (place.formatted_address) {
                   setAddress(place.formatted_address);
                 }
@@ -129,6 +132,13 @@ export default function ReturningClientConfirm() {
           </Link>
         </div>
       </div>
+
+      {/* RENDER THE MAGIC REVEAL MODAL */}
+      {showMagic && (
+        <MagicReveal 
+          onComplete={() => navigate('/returning/confirm', { state: { clientData: verifiedData } })} 
+        />
+      )}
     </div>
   );
 }
