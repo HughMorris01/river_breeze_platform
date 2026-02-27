@@ -4,18 +4,26 @@ import { useAuthStore } from '../store/authStore.js';
 import AvailabilityManager from '../components/AvailabilityManager';
 import toast from 'react-hot-toast';
 
+// Helper to reliably format phone numbers to (###) ###-####
+const formatPhone = (phone) => {
+  if (!phone) return '';
+  const cleaned = ('' + phone).replace(/\D/g, '');
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6,10)}`;
+  }
+  return phone; 
+};
+
 export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [activeTab, setActiveTab] = useState('Pending'); 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  // New Roster States
   const [expandedClient, setExpandedClient] = useState(null);
-  const [rosterSort, setRosterSort] = useState('recent'); // 'recent' or 'alpha'
+  const [rosterSort, setRosterSort] = useState('recent'); 
 
-  const { token, logout } = useAuthStore();
+  const { token } = useAuthStore();
 
-  // Added refreshTrigger to dependency array so actions automatically refetch data!
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -75,7 +83,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- FILTERING LOGIC ---
   const today = new Date();
   today.setHours(0, 0, 0, 0); 
 
@@ -99,7 +106,6 @@ export default function AdminDashboard() {
     return appt.status === 'Pending' && apptDate >= today;
   }).length;
 
-  // --- CLIENT ROSTER EXTRACTION & SORTING ---
   const clientMap = new Map();
   appointments.forEach(appt => {
      if (!appt.client) return;
@@ -112,7 +118,6 @@ export default function AdminDashboard() {
      }
   });
 
-  // Filter out archived clients and prep dates
   let activeClients = Array.from(clientMap.values()).filter(c => c.isActive !== false);
 
   activeClients = activeClients.map(c => {
@@ -124,14 +129,13 @@ export default function AdminDashboard() {
      return c;
   });
 
-  // Apply chosen sort
   activeClients.sort((a, b) => {
     if (rosterSort === 'alpha') {
       return a.name.localeCompare(b.name);
     } else {
       const dateA = a.lastJobDate ? new Date(a.lastJobDate).getTime() : 0;
       const dateB = b.lastJobDate ? new Date(b.lastJobDate).getTime() : 0;
-      return dateB - dateA; // Newest first
+      return dateB - dateA; 
     }
   });
 
@@ -139,7 +143,6 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-slate-50 p-1 md:p-12 pt-32 md:pt-40">
       <div className="max-w-7xl mx-auto">
         
-        {/* CENTERED HEADER */}
         <div className="flex flex-col items-center justify-center mb-10 text-center">
           <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">
             Booking Dashboard
@@ -149,7 +152,6 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        {/* NOTIFICATION TABS (Fixed Mobile Scrolling & Badge Overflow) */}
         <div className="flex justify-start sm:justify-center gap-4 mb-8 overflow-x-auto pb-4 pt-4 px-2" style={{ scrollbarWidth: 'none' }}>
           {['Pending', 'Confirmed', 'Completed', 'Canceled'].map(tab => (
             <div key={tab} className="relative shrink-0">
@@ -206,7 +208,7 @@ export default function AdminDashboard() {
 
                   <td className="p-3 text-center">
                     <div className="font-bold text-slate-800">{appt.client?.name}</div>
-                    <div className="text-xs text-slate-500">{appt.client?.phone}</div>
+                    <div className="text-xs text-slate-500">{formatPhone(appt.client?.phone)}</div>
                   </td>
                   
                   <td className="p-4 text-center">
@@ -273,14 +275,12 @@ export default function AdminDashboard() {
 
         <AvailabilityManager refreshTrigger={refreshTrigger} />
 
-        {/* REBUILT CLIENT ROSTER */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-8 mb-12">
           <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
               <h2 className="text-xl font-bold text-slate-800">Client Roster</h2>
               <p className="text-sm text-slate-500 mt-1">View your complete client database and service history.</p>
             </div>
-            {/* SORTING BUTTONS */}
             <div className="flex bg-slate-200/50 p-1 rounded-lg self-start md:self-auto">
               <button 
                 onClick={() => setRosterSort('recent')}
@@ -297,14 +297,13 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="p-6 md:p-8 max-h-[600px] overflow-y-auto">
+          <div className="p-6 md:p-8 max-h-150 overflow-y-auto">
              <div className="flex flex-col gap-3">
                 {activeClients.length === 0 ? (
                    <p className="text-slate-500 italic text-center p-8">No active clients found in the database.</p>
                 ) : (
                    activeClients.map(client => (
                      <div key={client._id} className="border-2 border-slate-100 rounded-xl bg-white transition-all overflow-hidden">
-                        {/* ACCORDION HEADER */}
                         <button 
                           onClick={() => setExpandedClient(expandedClient === client._id ? null : client._id)}
                           className={`w-full p-4 flex justify-between items-center text-left transition-colors ${expandedClient === client._id ? 'bg-teal-50 border-b-2 border-teal-100' : 'hover:bg-slate-50'}`}
@@ -315,14 +314,13 @@ export default function AdminDashboard() {
                           </svg>
                         </button>
                         
-                        {/* ACCORDION BODY */}
                         {expandedClient === client._id && (
                           <div className="p-5 bg-slate-50/50 animate-in fade-in slide-in-from-top-2">
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                <div>
                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Address & Contact</p>
                                  <p className="text-sm text-slate-700 mt-1 leading-relaxed">{client.address}</p>
-                                 <p className="text-sm text-slate-700 font-medium mt-1">{client.phone}</p>
+                                 <p className="text-sm text-slate-700 font-medium mt-1">{formatPhone(client.phone)}</p>
                                </div>
                                <div>
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Service</p>
@@ -337,7 +335,6 @@ export default function AdminDashboard() {
                                </div>
                              </div>
 
-                             {/* SOFT DELETE ACTION */}
                              <div className="mt-6 pt-4 border-t border-slate-200 flex justify-end">
                                <button 
                                  onClick={() => handleArchiveClient(client._id)}

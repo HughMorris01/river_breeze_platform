@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import Autocomplete from 'react-google-autocomplete'; // <-- NEW IMPORT
 import toast from 'react-hot-toast';
 
-export default function ReturningClientBooking() {
+export default function ReturningClientConfirm() {
   const [address, setAddress] = useState('');
   const [identity, setIdentity] = useState('');
   const [loading, setLoading] = useState(false);
@@ -46,7 +46,7 @@ export default function ReturningClientBooking() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto mt-12 bg-white shadow-2xl rounded-2xl overflow-hidden mb-20 border border-slate-100">
+    <div className="max-w-2xl mx-auto md:mt-20 bg-white shadow-2xl rounded-2xl overflow-hidden mb-20 border border-slate-100">
       
       <div className="px-8 py-10 text-center text-white bg-slate-800">
         <h2 className="text-3xl font-extrabold tracking-tight">Welcome Back</h2>
@@ -55,7 +55,7 @@ export default function ReturningClientBooking() {
         </p>
       </div>
 
-      <div className="p-8 md:p-12">
+      <div className="p-4 md:p-12">
         <form onSubmit={handleVerify} className="space-y-6">
           
           <div>

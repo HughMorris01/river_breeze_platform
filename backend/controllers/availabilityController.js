@@ -78,7 +78,7 @@ export const getAvailability = async (req, res) => {
 
           // A slot is ONLY valid if it sits flush against another boundary (gap = 0) 
           // OR leaves enough room for at least a 1.5 hr basic clean (gap >= 90 mins)
-          const isValidAnchor = (gapBefore === 0 || gapBefore >= 90) && (gapAfter === 0 || gapAfter >= 90);
+          const isValidAnchor = (gapBefore === 0 || gapBefore >= 60) && (gapAfter === 0 || gapAfter >= 60);
 
           if (isValidAnchor) {
               availableSlots.push({
