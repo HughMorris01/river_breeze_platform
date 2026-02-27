@@ -1,5 +1,5 @@
 import express from 'express';
-import { createClient, getClients, verifyClient } from '../controllers/clientController.js';
+import { createClient, getClients, verifyClient, archiveClient } from '../controllers/clientController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -12,5 +12,8 @@ router.route('/')
 
 // The Returning Client Verification endpoint
 router.post('/verify', verifyClient);
+
+// The Archive Client endpoint (soft delete)
+router.put('/:id/archive', protect, archiveClient);
 
 export default router;

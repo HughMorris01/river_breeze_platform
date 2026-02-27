@@ -8,8 +8,14 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState([]);
   const [activeTab, setActiveTab] = useState('Pending'); 
   const [refreshTrigger, setRefreshTrigger] = useState(0);
-  const { token } = useAuthStore();
+  
+  // New Roster States
+  const [expandedClient, setExpandedClient] = useState(null);
+  const [rosterSort, setRosterSort] = useState('recent'); // 'recent' or 'alpha'
 
+  const { token, logout } = useAuthStore();
+
+  // Added refreshTrigger to dependency array so actions automatically refetch data!
   useEffect(() => {
     const loadInitialData = async () => {
       try {
@@ -26,7 +32,7 @@ export default function AdminDashboard() {
     if (token) {
       loadInitialData();
     }
-  }, [token]); 
+  }, [token, refreshTrigger]); 
 
   const handleAction = async (id, action) => {
     try {
@@ -40,19 +46,32 @@ export default function AdminDashboard() {
       
       if (res.ok) {
         toast.success(`Appointment successfully ${action}ed!`);
-        const refreshRes = await fetch('/api/appointments', {
-          headers: { Authorization: `Bearer ${token}` }, 
-        });
-        const freshData = await refreshRes.json();
-        setAppointments(freshData);
         setRefreshTrigger(prev => prev + 1);
       } else {
         const data = await res.json();
         toast.error(`Failed to ${action}: ${data.message}`);
       }
-    } catch (err) {
-      console.error(`Error with ${action}:`, err);
+    } catch {
       toast.error('A network error occurred.');
+    }
+  };
+
+  const handleArchiveClient = async (clientId) => {
+    if (!window.confirm("Are you sure you want to remove this client? They will no longer be able to book returning services.")) return;
+    
+    try {
+      const res = await fetch(`/api/clients/${clientId}/archive`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        toast.success("Client removed from roster.");
+        setRefreshTrigger(prev => prev + 1);
+      } else {
+        toast.error("Failed to remove client.");
+      }
+    } catch {
+      toast.error("Network error.");
     }
   };
 
@@ -80,8 +99,7 @@ export default function AdminDashboard() {
     return appt.status === 'Pending' && apptDate >= today;
   }).length;
 
-  // --- CLIENT ROSTER EXTRACTION ---
-  // We extract the unique clients from the appointments data to build the roster dynamically
+  // --- CLIENT ROSTER EXTRACTION & SORTING ---
   const clientMap = new Map();
   appointments.forEach(appt => {
      if (!appt.client) return;
@@ -94,13 +112,27 @@ export default function AdminDashboard() {
      }
   });
 
-  const clientRoster = Array.from(clientMap.values()).map(c => {
+  // Filter out archived clients and prep dates
+  let activeClients = Array.from(clientMap.values()).filter(c => c.isActive !== false);
+
+  activeClients = activeClients.map(c => {
      if (c.completedJobs.length > 0) {
          c.completedJobs.sort((a,b) => new Date(b.date) - new Date(a.date));
          c.lastJobDate = c.completedJobs[0].date;
          c.lastJobPrice = c.completedJobs[0].quotedPrice;
      }
      return c;
+  });
+
+  // Apply chosen sort
+  activeClients.sort((a, b) => {
+    if (rosterSort === 'alpha') {
+      return a.name.localeCompare(b.name);
+    } else {
+      const dateA = a.lastJobDate ? new Date(a.lastJobDate).getTime() : 0;
+      const dateB = b.lastJobDate ? new Date(b.lastJobDate).getTime() : 0;
+      return dateB - dateA; // Newest first
+    }
   });
 
   return (
@@ -117,10 +149,10 @@ export default function AdminDashboard() {
           </p>
         </div>
 
-        {/* NOTIFICATION TABS */}
-        <div className="flex justify-center gap-4 mb-8 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+        {/* NOTIFICATION TABS (Fixed Mobile Scrolling & Badge Overflow) */}
+        <div className="flex justify-start sm:justify-center gap-4 mb-8 overflow-x-auto pb-4 pt-4 px-2" style={{ scrollbarWidth: 'none' }}>
           {['Pending', 'Confirmed', 'Completed', 'Canceled'].map(tab => (
-            <div key={tab} className="relative">
+            <div key={tab} className="relative shrink-0">
               <button
                 onClick={() => setActiveTab(tab)}
                 className={`px-6 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap ${
@@ -131,7 +163,6 @@ export default function AdminDashboard() {
               >
                 {tab}
               </button>
-              {/* NOTIFICATION BADGE */}
               {tab === 'Pending' && pendingCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[11px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm ring-2 ring-slate-50 z-10 animate-in zoom-in">
                   {pendingCount}
@@ -242,48 +273,87 @@ export default function AdminDashboard() {
 
         <AvailabilityManager refreshTrigger={refreshTrigger} />
 
-        {/* NEW: CLIENT ROSTER SECTION */}
+        {/* REBUILT CLIENT ROSTER */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-8 mb-12">
-          <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50">
-            <h2 className="text-xl font-bold text-slate-800">Client Roster</h2>
-            <p className="text-sm text-slate-500 mt-1">View your complete client database and service history.</p>
+          <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Client Roster</h2>
+              <p className="text-sm text-slate-500 mt-1">View your complete client database and service history.</p>
+            </div>
+            {/* SORTING BUTTONS */}
+            <div className="flex bg-slate-200/50 p-1 rounded-lg self-start md:self-auto">
+              <button 
+                onClick={() => setRosterSort('recent')}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${rosterSort === 'recent' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Most Recent
+              </button>
+              <button 
+                onClick={() => setRosterSort('alpha')}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${rosterSort === 'alpha' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                A - Z
+              </button>
+            </div>
           </div>
-          <div className="p-6 md:p-8 max-h-[400px] overflow-y-auto">
-             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {clientRoster.length === 0 ? (
-                   <p className="text-slate-500 italic">No clients found in the database.</p>
+
+          <div className="p-6 md:p-8 max-h-[600px] overflow-y-auto">
+             <div className="flex flex-col gap-3">
+                {activeClients.length === 0 ? (
+                   <p className="text-slate-500 italic text-center p-8">No active clients found in the database.</p>
                 ) : (
-                   clientRoster.map(client => (
-                     <div key={client._id} className="p-5 border-2 border-slate-100 rounded-xl bg-white hover:border-teal-100 transition-colors flex flex-col justify-between">
-                        <div>
-                          <p className="font-bold text-slate-800 text-lg">{client.name}</p>
-                          <p className="text-xs text-slate-500 mt-1 leading-relaxed">{client.address}</p>
-                          <p className="text-xs text-slate-500 font-medium mt-1 mb-4">{client.phone}</p>
-                        </div>
-                        <div className="pt-4 border-t border-slate-100 flex justify-between items-end">
-                           <div>
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Service</p>
-                              <p className="text-sm font-medium text-slate-700 mt-0.5">
-                                 {client.lastJobDate
-                                   ? new Date(client.lastJobDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
-                                   : 'No completed jobs'
-                                 }
-                              </p>
-                           </div>
-                           {client.lastJobPrice && (
-                              <div className="text-right">
-                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Paid</p>
-                                 <p className="text-sm font-bold text-teal-600 mt-0.5">${client.lastJobPrice}</p>
-                              </div>
-                           )}
-                        </div>
+                   activeClients.map(client => (
+                     <div key={client._id} className="border-2 border-slate-100 rounded-xl bg-white transition-all overflow-hidden">
+                        {/* ACCORDION HEADER */}
+                        <button 
+                          onClick={() => setExpandedClient(expandedClient === client._id ? null : client._id)}
+                          className={`w-full p-4 flex justify-between items-center text-left transition-colors ${expandedClient === client._id ? 'bg-teal-50 border-b-2 border-teal-100' : 'hover:bg-slate-50'}`}
+                        >
+                          <span className="font-bold text-slate-800 text-lg">{client.name}</span>
+                          <svg className={`w-5 h-5 text-slate-400 transition-transform ${expandedClient === client._id ? 'rotate-180 text-teal-600' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {/* ACCORDION BODY */}
+                        {expandedClient === client._id && (
+                          <div className="p-5 bg-slate-50/50 animate-in fade-in slide-in-from-top-2">
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                               <div>
+                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Address & Contact</p>
+                                 <p className="text-sm text-slate-700 mt-1 leading-relaxed">{client.address}</p>
+                                 <p className="text-sm text-slate-700 font-medium mt-1">{client.phone}</p>
+                               </div>
+                               <div>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Service</p>
+                                  <p className="text-sm font-medium text-slate-700 mt-1">
+                                    {client.lastJobDate 
+                                      ? new Date(client.lastJobDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
+                                      : 'No completed jobs'}
+                                  </p>
+                                  {client.lastJobPrice && (
+                                    <p className="text-sm font-bold text-teal-600 mt-1">${client.lastJobPrice} Paid</p>
+                                  )}
+                               </div>
+                             </div>
+
+                             {/* SOFT DELETE ACTION */}
+                             <div className="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+                               <button 
+                                 onClick={() => handleArchiveClient(client._id)}
+                                 className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider px-3 py-1.5 hover:bg-red-50 rounded-lg"
+                               >
+                                 Deactivate Client
+                               </button>
+                             </div>
+                          </div>
+                        )}
                      </div>
                    ))
                 )}
              </div>
           </div>
         </div>
-        {/* END CLIENT ROSTER */}
 
       </div>
     </div>

@@ -42,6 +42,9 @@ export const verifyClient = async (req, res) => {
     const allClients = await Client.find();
 
     const matchedClient = allClients.find(client => {
+      // NEW: Reject if the client has been soft-deleted by Kate
+      if (client.isActive === false) return false;
+
       const emailMatch = client.email?.toLowerCase() === identity.toLowerCase().trim();
       const phoneMatch = client.phone?.replace(/\D/g, '') === cleanInputPhone;
       
@@ -55,13 +58,11 @@ export const verifyClient = async (req, res) => {
       return res.status(404).json({ message: 'No matching profile found.' });
     }
 
-    // STRICT CHECK: Fetch their most recent completed appointment
     const lastAppointment = await Appointment.findOne({ 
       client: matchedClient._id,
       status: 'Completed' 
     }).sort({ createdAt: -1 });
 
-    // NEW: Reject them if they don't have a completed job history
     if (!lastAppointment) {
       return res.status(404).json({ message: 'No completed services found. Please use the New Quote Calculator to get started.' });
     }
@@ -74,5 +75,21 @@ export const verifyClient = async (req, res) => {
   } catch (error) {
     console.error("Verification Error:", error);
     res.status(500).json({ message: 'Server error during verification.' });
+  }
+};
+
+export const archiveClient = async (req, res) => {
+  try {
+    const client = await Client.findById(req.params.id);
+    if (!client) return res.status(404).json({ message: 'Client not found' });
+
+    // We set a flag instead of deleting so historical appointment data doesn't break
+    client.isActive = false; 
+    await client.save();
+
+    res.json({ message: 'Client archived successfully' });
+  } catch (error) {
+    console.error("Archive Error:", error);
+    res.status(500).json({ message: 'Server error archiving client.' });
   }
 };
