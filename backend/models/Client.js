@@ -20,6 +20,10 @@ const clientSchema = new mongoose.Schema({
     type: Boolean, 
     default: false // Triggers the pet hair/dander labor modifier
   },
+  isActive: {
+    type: Boolean,
+    default: true
+  },
 }, { 
   timestamps: true 
 });

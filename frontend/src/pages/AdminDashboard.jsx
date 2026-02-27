@@ -22,6 +22,9 @@ export default function AdminDashboard() {
   const [expandedClient, setExpandedClient] = useState(null);
   const [rosterSort, setRosterSort] = useState('recent'); 
 
+  // Modal States
+  const [clientToDeactivate, setClientToDeactivate] = useState(null);
+
   const { token } = useAuthStore();
 
   useEffect(() => {
@@ -64,19 +67,51 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleArchiveClient = async (clientId) => {
-    if (!window.confirm("Are you sure you want to remove this client? They will no longer be able to book returning services.")) return;
+  const confirmDeactivation = async () => {
+    if (!clientToDeactivate) return;
+    const clientId = clientToDeactivate._id;
     
+    // Find any active appointments so we can cancel them
+    const activeAppts = appointments.filter(a => a.client && a.client._id === clientId && ['Pending', 'Confirmed'].includes(a.status));
+
     try {
+      // 1. Archive the client
       const res = await fetch(`/api/clients/${clientId}/archive`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
+      
       if (res.ok) {
-        toast.success("Client removed from roster.");
+        // 2. Cancel all their active appointments automatically to free up the calendar!
+        for (const appt of activeAppts) {
+           await fetch(`/api/appointments/${appt._id}/cancel`, {
+              method: 'PUT',
+              headers: { 
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              }
+           });
+        }
+
+        toast.success("Client deactivated and appointments canceled.");
+        
+        // 3. Aggressive Optimistic UI Update to banish them from the screen instantly
+        setAppointments(prev => prev.map(appt => {
+          if (appt.client && appt.client._id === clientId) {
+            const updated = { ...appt, client: { ...appt.client, isActive: false } };
+            if (['Pending', 'Confirmed'].includes(appt.status)) {
+              updated.status = 'Canceled';
+            }
+            return updated;
+          }
+          return appt;
+        }));
+
         setRefreshTrigger(prev => prev + 1);
+        setExpandedClient(null);
+        setClientToDeactivate(null);
       } else {
-        toast.error("Failed to remove client.");
+        toast.error("Failed to deactivate client.");
       }
     } catch {
       toast.error("Network error.");
@@ -139,8 +174,13 @@ export default function AdminDashboard() {
     }
   });
 
+  // Calculate dynamic warning data for the modal
+  const clientActiveAppts = clientToDeactivate 
+    ? appointments.filter(a => a.client && a.client._id === clientToDeactivate._id && ['Pending', 'Confirmed'].includes(a.status)) 
+    : [];
+
   return (
-    <div className="min-h-screen bg-slate-50 p-1 md:p-12 pt-32 md:pt-40">
+    <div className="min-h-screen bg-slate-50 p-1 md:p-12 pt-32 md:pt-40 relative">
       <div className="max-w-7xl mx-auto">
         
         <div className="flex flex-col items-center justify-center mb-10 text-center">
@@ -337,7 +377,7 @@ export default function AdminDashboard() {
 
                              <div className="mt-6 pt-4 border-t border-slate-200 flex justify-end">
                                <button 
-                                 onClick={() => handleArchiveClient(client._id)}
+                                 onClick={() => setClientToDeactivate(client)}
                                  className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider px-3 py-1.5 hover:bg-red-50 rounded-lg"
                                >
                                  Deactivate Client
@@ -351,8 +391,50 @@ export default function AdminDashboard() {
              </div>
           </div>
         </div>
-
       </div>
+
+      {/* --- DEACTIVATION MODAL --- */}
+      {clientToDeactivate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="p-6 md:p-8">
+              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-5 border border-red-200">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              
+              <h3 className="text-xl font-black text-slate-800 mb-2 tracking-tight">Deactivate Client?</h3>
+              <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                Are you sure you want to deactivate <strong className="text-slate-800">{clientToDeactivate.name}</strong>? They will be removed from your active roster and will no longer be able to use the Returning Client portal to book services.
+              </p>
+
+              {/* DYNAMIC CANCELLATION WARNING */}
+              {clientActiveAppts.length > 0 && (
+                <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm font-medium border border-red-100">
+                  ⚠️ <strong>Warning:</strong> This client has {clientActiveAppts.length} active appointment(s). Deactivating them will automatically cancel these bookings and free up your calendar.
+                </div>
+              )}
+              
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setClientToDeactivate(null)}
+                  className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={confirmDeactivation}
+                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-500/30 hover:-translate-y-0.5"
+                >
+                  Deactivate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
