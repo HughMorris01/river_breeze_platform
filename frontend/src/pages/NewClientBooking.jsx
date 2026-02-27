@@ -171,17 +171,28 @@ export default function NewClientBooking() {
                     <Autocomplete
                       apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
                       onPlaceSelected={(place) => {
-                        const hasHouseNumber = place.address_components?.some(component => component.types.includes('street_number'));
+                        const hasHouseNumber = place.address_components?.some(component => 
+                          component.types.includes('street_number')
+                        );
+
                         if (!hasHouseNumber) {
                           setAddress(''); 
-                          return toast.error("Please select an exact house number from the dropdown.");
+                          return toast.error("Please select an exact house number from the dropdown, not just a street name.");
                         }
-                        if (place.formatted_address) setAddress(place.formatted_address);
+
+                        if (place.formatted_address) {
+                          setAddress(place.formatted_address);
+                        }
                       }}
-                      onChange={(e) => setAddress(e.target.value)} 
-                      value={address} 
-                      options={{ types: ['address'], componentRestrictions: { country: 'us' } }}
-                      className="w-full p-3 border-2 rounded-lg outline-none focus:border-teal-500 bg-slate-50 focus:bg-white"
+                        onChange={(e) => setAddress(e.target.value)} 
+                        value={address} 
+                        options={{
+                        types: ['address'],
+                        componentRestrictions: { country: 'us' },
+                        strictBounds: true,
+                        bounds: { north: 44.96, south: 43.51, east: -75.06, west: -77.10 }
+                      }}
+                      className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 transition-colors bg-slate-50 focus:bg-white text-lg font-medium text-slate-800"
                       placeholder="Start typing your address..."
                     />
                   </div>
