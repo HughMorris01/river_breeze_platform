@@ -20,20 +20,20 @@ export default function Hero() {
           </h1>
           
           <p className="max-w-xl mx-auto text-lg md:text-2xl text-slate-100 font-medium leading-relaxed mb-10 md:mb-16 drop-shadow-md">
-            Premium domestic detailing for Clayton, Wellesley Island and the 1000 Island Region. 
+            Premium domestic detailing for Clayton, Wellesley Island and the 1000 Islands Region. 
             We handle the dirt so you can get back to the river.
           </p>
 
           <div className="flex flex-col w-full sm:w-auto sm:flex-row items-center justify-center gap-4 md:gap-6">
             <Link 
               to="/quote" 
-              className="opacity-75 flex items-center justify-center w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-teal-500/30 backdrop-blur-xl text-white text-lg md:text-xl font-bold rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-teal-400/40 hover:-translate-y-1 transition-all duration-300"
+              className="opacity-85 flex items-center justify-center w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-teal-500/80  text-white text-lg md:text-xl font-bold rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-teal-400/40 hover:-translate-y-1 transition-all duration-300"
             >
               Get an Instant Quote
             </Link>
             <Link 
               to="/returning"
-              className="opacity-85 flex items-center justify-center w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-white/10 backdrop-blur-xl text-white text-lg md:text-xl font-bold rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-white/20 hover:-translate-y-1 transition-all duration-300"
+              className="opacity-99 flex items-center justify-center w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-white/10 backdrop-blur-xl text-white text-lg md:text-xl font-bold rounded-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.12)] hover:bg-white/20 hover:-translate-y-1 transition-all duration-300"
             >
               Returning Clients
             </Link>
