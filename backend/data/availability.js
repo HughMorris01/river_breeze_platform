@@ -1,4 +1,3 @@
-// backend/seeders/availability.js
 import Shift from '../models/Shift.js';
 
 export const seedAvailability = async () => {

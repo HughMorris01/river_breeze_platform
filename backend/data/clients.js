@@ -1,4 +1,3 @@
-// backend/seeders/clients.js
 import Client from '../models/Client.js';
 
 const realClaytonAddresses = [

@@ -1,4 +1,3 @@
-// backend/seeders/appointments.js
 import Appointment from '../models/Appointment.js';
 import Client from '../models/Client.js';
 import Shift from '../models/Shift.js';
@@ -19,15 +18,34 @@ export const seedAppointments = async () => {
      d.setDate(d.getDate() + i);
      
      if (d.getDay() !== 0) {
+       
+       // NEW: Create a mix of statuses for past jobs
+       const rand = Math.random();
+       let status = 'Completed';
+       if (rand > 0.8) status = 'Canceled';
+       else if (rand > 0.5) status = 'Confirmed'; // <--- This will trigger the "To Finalize" badge!
+
+       // NEW: Add some dummy admin notes for completed jobs to test the new roster UI
+       let adminNotes = '';
+       if (status === 'Completed' && Math.random() > 0.5) {
+           const notes = [
+             "Super easy job. Client left a $20 tip.",
+             "Hard water stains on master shower glass, needed extra scrubbing.",
+             "Friendly dog, but keep the side gate closed."
+           ];
+           adminNotes = notes[Math.floor(Math.random() * notes.length)];
+       }
+
        await Appointment.create({
           client: clients[Math.floor(Math.random() * clients.length)]._id,
           serviceType: 'Standard Clean',
           quotedPrice: 120,
-          status: Math.random() > 0.2 ? 'Completed' : 'Canceled',
+          status: status,
           date: d,
           startTime: '09:00',
           endTime: '11:00',
-          estimatedHours: 2.0
+          estimatedHours: 2.0,
+          adminNotes // Passed to DB
        });
      }
   }
@@ -42,15 +60,22 @@ export const seedAppointments = async () => {
          const h = Math.floor(endMins / 60).toString().padStart(2, '0');
          const m = (endMins % 60).toString().padStart(2, '0');
 
+         // NEW: Add some dummy client notes to test the data flowing from checkout
+         let clientNotes = '';
+         if (Math.random() > 0.7) {
+             clientNotes = "Please text me 15 mins before you arrive. Gate code is 4321.";
+         }
+
          await Appointment.create({
             client: clients[Math.floor(Math.random() * clients.length)]._id,
             serviceType: 'Standard Clean',
             quotedPrice: duration === 1.5 ? 95 : 125,
             status: Math.random() > 0.3 ? 'Pending' : 'Confirmed',
             date: shift.date,
-            startTime: shift.startTime, // Perfectly aligned to the start of the shift
+            startTime: shift.startTime, 
             endTime: `${h}:${m}`,
-            estimatedHours: duration
+            estimatedHours: duration,
+            clientNotes // Passed to DB
          });
      }
   }
