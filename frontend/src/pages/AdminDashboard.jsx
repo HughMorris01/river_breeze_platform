@@ -4,7 +4,6 @@ import { useAuthStore } from '../store/authStore.js';
 import AvailabilityManager from '../components/AvailabilityManager';
 import toast from 'react-hot-toast';
 
-// Helper to reliably format phone numbers to (###) ###-####
 const formatPhone = (phone) => {
   if (!phone) return '';
   const cleaned = ('' + phone).replace(/\D/g, '');
@@ -24,6 +23,8 @@ export default function AdminDashboard() {
 
   // Modal States
   const [clientToDeactivate, setClientToDeactivate] = useState(null);
+  const [apptToComplete, setApptToComplete] = useState(null);
+  const [adminNotes, setAdminNotes] = useState('');
 
   const { token } = useAuthStore();
 
@@ -45,6 +46,7 @@ export default function AdminDashboard() {
     }
   }, [token, refreshTrigger]); 
 
+  // Standard Action Handler (Confirm, Cancel)
   const handleAction = async (id, action) => {
     try {
       const res = await fetch(`/api/appointments/${id}/${action}`, {
@@ -67,46 +69,59 @@ export default function AdminDashboard() {
     }
   };
 
+  // NEW: Finalize / Complete Handler with Notes
+  const confirmCompletion = async () => {
+    if (!apptToComplete) return;
+    try {
+      const res = await fetch(`/api/appointments/${apptToComplete._id}/complete`, {
+        method: 'PUT',
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ adminNotes })
+      });
+      
+      if (res.ok) {
+        toast.success("Job finalized and logged in roster!");
+        setRefreshTrigger(prev => prev + 1);
+        setApptToComplete(null);
+        setAdminNotes('');
+      } else {
+        toast.error("Failed to finalize job.");
+      }
+    } catch {
+      toast.error("Network error.");
+    }
+  };
+
   const confirmDeactivation = async () => {
     if (!clientToDeactivate) return;
     const clientId = clientToDeactivate._id;
-    
-    // Find any active appointments so we can cancel them
     const activeAppts = appointments.filter(a => a.client && a.client._id === clientId && ['Pending', 'Confirmed'].includes(a.status));
 
     try {
-      // 1. Archive the client
       const res = await fetch(`/api/clients/${clientId}/archive`, {
         method: 'PUT',
         headers: { Authorization: `Bearer ${token}` }
       });
       
       if (res.ok) {
-        // 2. Cancel all their active appointments automatically to free up the calendar!
         for (const appt of activeAppts) {
            await fetch(`/api/appointments/${appt._id}/cancel`, {
               method: 'PUT',
-              headers: { 
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json'
-              }
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
            });
         }
-
         toast.success("Client deactivated and appointments canceled.");
-        
-        // 3. Aggressive Optimistic UI Update to banish them from the screen instantly
         setAppointments(prev => prev.map(appt => {
           if (appt.client && appt.client._id === clientId) {
             const updated = { ...appt, client: { ...appt.client, isActive: false } };
-            if (['Pending', 'Confirmed'].includes(appt.status)) {
-              updated.status = 'Canceled';
-            }
+            if (['Pending', 'Confirmed'].includes(appt.status)) updated.status = 'Canceled';
             return updated;
           }
           return appt;
         }));
-
         setRefreshTrigger(prev => prev + 1);
         setExpandedClient(null);
         setClientToDeactivate(null);
@@ -125,7 +140,6 @@ export default function AdminDashboard() {
     const apptDateStr = appt.date || appt.createdAt;
     const apptDate = new Date(apptDateStr);
     apptDate.setHours(0, 0, 0, 0);
-
     const isPastDue = apptDate < today;
 
     if (activeTab === 'Pending') return appt.status === 'Pending' && !isPastDue;
@@ -135,18 +149,27 @@ export default function AdminDashboard() {
     return false;
   });
 
+  // Badge Logic
   const pendingCount = appointments.filter(appt => {
     const apptDate = new Date(appt.date || appt.createdAt);
     apptDate.setHours(0,0,0,0);
     return appt.status === 'Pending' && apptDate >= today;
   }).length;
 
+  const toFinalizeCount = appointments.filter(appt => {
+    const apptDate = new Date(appt.date || appt.createdAt);
+    apptDate.setHours(0,0,0,0);
+    const isPastDue = apptDate < today;
+    return isPastDue && (appt.status === 'Confirmed' || appt.status === 'Pending');
+  }).length;
+
+  // Roster Logic
   const clientMap = new Map();
   appointments.forEach(appt => {
      if (!appt.client) return;
      const cid = appt.client._id;
      if (!clientMap.has(cid)) {
-         clientMap.set(cid, { ...appt.client, lastJobDate: null, lastJobPrice: null, completedJobs: [] });
+         clientMap.set(cid, { ...appt.client, lastJobDate: null, lastJobPrice: null, lastJobAdminNotes: null, completedJobs: [] });
      }
      if (appt.status === 'Completed') {
          clientMap.get(cid).completedJobs.push(appt);
@@ -160,38 +183,30 @@ export default function AdminDashboard() {
          c.completedJobs.sort((a,b) => new Date(b.date) - new Date(a.date));
          c.lastJobDate = c.completedJobs[0].date;
          c.lastJobPrice = c.completedJobs[0].quotedPrice;
+         c.lastJobAdminNotes = c.completedJobs[0].adminNotes; // Grab the notes!
      }
      return c;
   });
 
   activeClients.sort((a, b) => {
-    if (rosterSort === 'alpha') {
-      return a.name.localeCompare(b.name);
-    } else {
-      const dateA = a.lastJobDate ? new Date(a.lastJobDate).getTime() : 0;
-      const dateB = b.lastJobDate ? new Date(b.lastJobDate).getTime() : 0;
-      return dateB - dateA; 
-    }
+    if (rosterSort === 'alpha') return a.name.localeCompare(b.name);
+    const dateA = a.lastJobDate ? new Date(a.lastJobDate).getTime() : 0;
+    const dateB = b.lastJobDate ? new Date(b.lastJobDate).getTime() : 0;
+    return dateB - dateA; 
   });
-
-  // Calculate dynamic warning data for the modal
-  const clientActiveAppts = clientToDeactivate 
-    ? appointments.filter(a => a.client && a.client._id === clientToDeactivate._id && ['Pending', 'Confirmed'].includes(a.status)) 
-    : [];
 
   return (
     <div className="min-h-screen bg-slate-50 p-1 md:p-12 pt-32 md:pt-40 relative">
       <div className="max-w-7xl mx-auto">
         
         <div className="flex flex-col items-center justify-center mb-10 text-center">
-          <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">
-            Booking Dashboard
-          </h1>
+          <h1 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">Booking Dashboard</h1>
           <p className="text-slate-500 mt-3 text-sm md:text-base max-w-xl">
             Manage your appointments, availability, and complete client roster all in one place.
           </p>
         </div>
 
+        {/* TABS WITH DYNAMIC BADGES */}
         <div className="flex justify-start sm:justify-center gap-4 mb-8 overflow-x-auto pb-4 pt-4 px-2" style={{ scrollbarWidth: 'none' }}>
           {['Pending', 'Confirmed', 'Completed', 'Canceled'].map(tab => (
             <div key={tab} className="relative shrink-0">
@@ -205,15 +220,23 @@ export default function AdminDashboard() {
               >
                 {tab}
               </button>
+              {/* Pending Badge */}
               {tab === 'Pending' && pendingCount > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[11px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm ring-2 ring-slate-50 z-10 animate-in zoom-in">
                   {pendingCount}
+                </span>
+              )}
+              {/* To Finalize Badge */}
+              {tab === 'Completed' && toFinalizeCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[11px] font-black w-6 h-6 flex items-center justify-center rounded-full shadow-sm ring-2 ring-slate-50 z-10 animate-in zoom-in" title={`${toFinalizeCount} jobs to finalize`}>
+                  {toFinalizeCount}
                 </span>
               )}
             </div>
           ))}
         </div>
 
+        {/* DATA TABLE */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto mb-12">
           <table className="w-full text-left border-collapse min-w-250">
             <thead className="bg-slate-800 text-white">
@@ -222,7 +245,7 @@ export default function AdminDashboard() {
                 <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Client</th>
                 <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Service</th>
                 <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Price</th>
-                <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Address</th>
+                <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Address & Details</th>
                 <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Status</th>
                 <th className="text-center p-4 text-xs uppercase tracking-wider font-bold">Actions</th>
               </tr>
@@ -260,9 +283,14 @@ export default function AdminDashboard() {
                   </td>
 
                   <td className="p-4 text-xs text-slate-500 leading-tight text-center">
-                    {appt.client?.address}
+                    <div className="font-medium text-slate-700">{appt.client?.address}</div>
                     {appt.addOns?.length > 0 && (
                       <div className="mt-1 italic text-teal-600">Add-ons: {appt.addOns.join(', ')}</div>
+                    )}
+                    {appt.clientNotes && (
+                      <div className="mt-2 p-2 bg-amber-50 border border-amber-100 rounded text-amber-800 italic text-left inline-block w-full max-w-50">
+                        "{appt.clientNotes}"
+                      </div>
                     )}
                   </td>
                   
@@ -292,7 +320,7 @@ export default function AdminDashboard() {
 
                       {activeTab === 'Completed' && appt.status !== 'Completed' && (
                         <>
-                          <button onClick={() => handleAction(appt._id, 'complete')} className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors">Mark Done</button>
+                          <button onClick={() => setApptToComplete(appt)} className="px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg shadow-sm transition-colors animate-pulse">Finalize Job</button>
                           <button onClick={() => handleAction(appt._id, 'cancel')} className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-bold rounded-lg transition-colors">Cancel</button>
                         </>
                       )}
@@ -315,6 +343,7 @@ export default function AdminDashboard() {
 
         <AvailabilityManager refreshTrigger={refreshTrigger} />
 
+        {/* CLIENT ROSTER */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-8 mb-12">
           <div className="p-6 md:p-8 border-b border-slate-100 bg-slate-50 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
@@ -322,18 +351,8 @@ export default function AdminDashboard() {
               <p className="text-sm text-slate-500 mt-1">View your complete client database and service history.</p>
             </div>
             <div className="flex bg-slate-200/50 p-1 rounded-lg self-start md:self-auto">
-              <button 
-                onClick={() => setRosterSort('recent')}
-                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${rosterSort === 'recent' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Most Recent
-              </button>
-              <button 
-                onClick={() => setRosterSort('alpha')}
-                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${rosterSort === 'alpha' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                A - Z
-              </button>
+              <button onClick={() => setRosterSort('recent')} className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${rosterSort === 'recent' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Most Recent</button>
+              <button onClick={() => setRosterSort('alpha')} className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-all ${rosterSort === 'alpha' ? 'bg-white text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>A - Z</button>
             </div>
           </div>
 
@@ -365,21 +384,22 @@ export default function AdminDashboard() {
                                <div>
                                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last Service</p>
                                   <p className="text-sm font-medium text-slate-700 mt-1">
-                                    {client.lastJobDate 
-                                      ? new Date(client.lastJobDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })
-                                      : 'No completed jobs'}
+                                    {client.lastJobDate ? new Date(client.lastJobDate).toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' }) : 'No completed jobs'}
                                   </p>
-                                  {client.lastJobPrice && (
-                                    <p className="text-sm font-bold text-teal-600 mt-1">${client.lastJobPrice} Paid</p>
-                                  )}
+                                  {client.lastJobPrice && <p className="text-sm font-bold text-teal-600 mt-1">${client.lastJobPrice} Paid</p>}
                                </div>
                              </div>
 
+                             {/* NEW: DISPLAY ADMIN NOTES IN ROSTER */}
+                             {client.lastJobAdminNotes && (
+                               <div className="mt-4 p-4 bg-white border border-slate-200 rounded-xl shadow-sm">
+                                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Service Notes</p>
+                                 <p className="text-sm text-slate-700 italic">"{client.lastJobAdminNotes}"</p>
+                               </div>
+                             )}
+
                              <div className="mt-6 pt-4 border-t border-slate-200 flex justify-end">
-                               <button 
-                                 onClick={() => setClientToDeactivate(client)}
-                                 className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider px-3 py-1.5 hover:bg-red-50 rounded-lg"
-                               >
+                               <button onClick={() => setClientToDeactivate(client)} className="text-xs font-bold text-red-500 hover:text-red-700 transition-colors uppercase tracking-wider px-3 py-1.5 hover:bg-red-50 rounded-lg">
                                  Deactivate Client
                                </button>
                              </div>
@@ -393,42 +413,60 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* --- DEACTIVATION MODAL --- */}
-      {clientToDeactivate && (
+      {/* --- FINALIZE APPOINTMENT MODAL --- */}
+      {apptToComplete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
             <div className="p-6 md:p-8">
-              <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mb-5 border border-red-200">
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              
-              <h3 className="text-xl font-black text-slate-800 mb-2 tracking-tight">Deactivate Client?</h3>
-              <p className="text-slate-500 text-sm leading-relaxed mb-6">
-                Are you sure you want to deactivate <strong className="text-slate-800">{clientToDeactivate.name}</strong>? They will be removed from your active roster and will no longer be able to use the Returning Client portal to book services.
+              <h3 className="text-2xl font-black text-slate-800 mb-2 tracking-tight">Finalize Service</h3>
+              <p className="text-slate-500 text-sm mb-6">
+                You are marking the job for <strong className="text-slate-800">{apptToComplete.client?.name}</strong> as completed. Optionally add any internal notes about the property below.
               </p>
-
-              {/* DYNAMIC CANCELLATION WARNING */}
-              {clientActiveAppts.length > 0 && (
-                <div className="bg-red-50 text-red-700 p-4 rounded-xl mb-6 text-sm font-medium border border-red-100">
-                  ⚠️ <strong>Warning:</strong> This client has {clientActiveAppts.length} active appointment(s). Deactivating them will automatically cancel these bookings and free up your calendar.
-                </div>
-              )}
               
+              <div className="mb-6">
+                <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Internal Service Notes</label>
+                <textarea 
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  placeholder="e.g., Hard water stains in master bath, gate code is 1234..."
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl outline-none focus:border-teal-500 transition-colors min-h-30 resize-none bg-slate-50 focus:bg-white text-sm"
+                />
+              </div>
+
               <div className="flex gap-3">
                 <button 
-                  onClick={() => setClientToDeactivate(null)}
+                  onClick={() => {
+                    setApptToComplete(null);
+                    setAdminNotes('');
+                  }}
                   className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
-                  onClick={confirmDeactivation}
-                  className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-500/30 hover:-translate-y-0.5"
+                  onClick={confirmCompletion}
+                  className="flex-2 px-4 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-bold rounded-xl transition-all shadow-lg hover:-translate-y-0.5"
                 >
-                  Deactivate
+                  Mark as Completed
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- DEACTIVATION MODAL --- */}
+      {clientToDeactivate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100">
+            <div className="p-6 md:p-8">
+              <h3 className="text-xl font-black text-slate-800 mb-2 tracking-tight">Deactivate Client?</h3>
+              <p className="text-slate-500 text-sm leading-relaxed mb-6">
+                Are you sure you want to deactivate <strong className="text-slate-800">{clientToDeactivate.name}</strong>?
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setClientToDeactivate(null)} className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors">Cancel</button>
+                <button onClick={confirmDeactivation} className="flex-1 px-4 py-3 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-all shadow-lg">Deactivate</button>
               </div>
             </div>
           </div>

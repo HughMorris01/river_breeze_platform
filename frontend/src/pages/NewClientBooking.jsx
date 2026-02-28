@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 // --- STRICT FORMATTERS ---
 const formatPhone = (value) => {
   if (!value) return value;
-  const phoneNumber = value.replace(/\D]/g, '');
+  const phoneNumber = value.replace(/\D/g, '');
   if (phoneNumber.length < 4) return phoneNumber;
   if (phoneNumber.length < 7) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
   return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
@@ -41,6 +41,7 @@ export default function NewClientBooking() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [clientNotes, setClientNotes] = useState('');
 
   // Payment States (Left in for visual structure)
   const [paymentMethod, setPaymentMethod] = useState('cc'); 
@@ -65,20 +66,10 @@ export default function NewClientBooking() {
     
     if (!selectedSlot) return toast.error("Please select an available date and time.");
     if (!firstName || !lastName || !email || !phone || !address) return toast.error("Please fill out all contact details.");
-    
-    // PAYMENT VALIDATION BYPASSED FOR TESTING
-    /*
-    if (paymentMethod === 'cc') {
-        if (cardNumber.replace(/\s/g, '').length < 16) return toast.error("Please enter a valid 16-digit card number.");
-        if (expiry.length < 5) return toast.error("Please enter a valid expiration date (MM/YY).");
-        if (cvc.length < 3) return toast.error("Please enter a valid 3-digit CVC.");
-    }
-    */
 
     setLoading(true);
 
     try {
-      // Fake payment delay
       toast.loading("Simulating deposit processing...", { id: 'payment' });
       await new Promise(resolve => setTimeout(resolve, 1000)); 
       toast.success("Test Payment Bypassed!", { id: 'payment' });
@@ -114,7 +105,8 @@ export default function NewClientBooking() {
           date: selectedSlot.date,
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
-          estimatedHours: quoteDetails.quote.time
+          estimatedHours: quoteDetails.quote.time,
+          clientNotes
         }),
       });
 
@@ -196,13 +188,27 @@ export default function NewClientBooking() {
                       placeholder="Start typing your address..."
                     />
                   </div>
+                  
+                  {/* CLIENT NOTES INPUT WITH COUNTER */}
+                  <div className="md:col-span-2 mt-2">
+                    <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-1">Special Instructions (Optional)</label>
+                    <textarea 
+                      value={clientNotes} 
+                      onChange={(e) => setClientNotes(e.target.value)} 
+                      maxLength={200}
+                      placeholder="Any specific requests, gate codes, or pet instructions for Kate?" 
+                      className="w-full p-3 border-2 rounded-lg outline-none focus:border-teal-500 bg-slate-50 focus:bg-white min-h-25 resize-none"
+                    />
+                    <div className={`text-right text-[10px] font-bold tracking-wider mt-1 ${clientNotes.length === 200 ? 'text-red-500' : 'text-slate-400'}`}>
+                      {clientNotes.length} / 200
+                    </div>
+                  </div>
+
                </div>
             </div>
 
             {/* PAYMENT GATEWAY - GRAYED OUT FOR TESTING */}
             <div className="bg-slate-50 p-6 md:p-8 rounded-2xl border border-slate-200 relative overflow-hidden">
-               
-               {/* OVERLAY BADGE */}
                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
                  <div className="bg-slate-800 text-white font-black tracking-widest uppercase text-sm px-6 py-3 rounded-xl shadow-2xl rotate-2">
                    Disabled For Testing

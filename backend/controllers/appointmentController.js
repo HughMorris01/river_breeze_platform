@@ -8,7 +8,7 @@ import Shift from '../models/Shift.js';
 // @note    Includes a security check to verify the shift still exists and no double-booking has occurred (including travel buffers).
 export const createAppointment = async (req, res) => {
   try {
-    const { client, serviceType, addOns, quotedPrice, date, startTime, endTime, estimatedHours } = req.body;
+    const { client, serviceType, addOns, quotedPrice, date, startTime, endTime, estimatedHours, clientNotes } = req.body;
 
     // --- REAL-TIME SECURITY CHECK ---
     const apptDate = new Date(date);
@@ -54,7 +54,8 @@ export const createAppointment = async (req, res) => {
       date,
       startTime,
       endTime,
-      estimatedHours
+      estimatedHours,
+      clientNotes
     });
 
     res.status(201).json(appointment);
@@ -122,10 +123,12 @@ export const cancelAppointment = async (req, res) => {
 // @access  Private/Admin
 export const completeAppointment = async (req, res) => {
   try {
+    const { adminNotes } = req.body;
     const appointment = await Appointment.findById(req.params.id);
     if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
 
     appointment.status = 'Completed';
+    if (adminNotes) appointment.adminNotes = adminNotes;
     await appointment.save();
 
     res.json({ message: 'Appointment marked as completed.' });

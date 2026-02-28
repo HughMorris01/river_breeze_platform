@@ -12,7 +12,6 @@ const ADD_ON_OPTIONS = [
   { id: 'linens', label: 'Change Bed Linens', price: 15, time: 0.25 }
 ];
 
-// Helper to reliably format phone numbers to (###) ###-####
 const formatPhone = (phone) => {
   if (!phone) return '';
   const cleaned = ('' + phone).replace(/\D/g, '');
@@ -34,7 +33,9 @@ export default function ReturningClientBooking() {
 
   const [serviceType, setServiceType] = useState(lastJob?.serviceType || 'Standard Clean');
   const [selectedAddOns, setSelectedAddOns] = useState([]);
-  const [showAddOns, setShowAddOns] = useState(false); // NEW ACCORDION STATE
+  const [showAddOns, setShowAddOns] = useState(false);
+  
+  const [clientNotes, setClientNotes] = useState('');
   
   const [dynamicQuote, setDynamicQuote] = useState({ 
     price: lastJob?.quotedPrice || 95, 
@@ -134,7 +135,8 @@ export default function ReturningClientBooking() {
           date: selectedSlot.date,
           startTime: selectedSlot.startTime,
           endTime: selectedSlot.endTime,
-          estimatedHours: dynamicQuote.time
+          estimatedHours: dynamicQuote.time,
+          clientNotes 
         }),
       });
 
@@ -258,6 +260,22 @@ export default function ReturningClientBooking() {
                 </div>
               )}
             </div>
+
+            {/* CLIENT NOTES INPUT WITH COUNTER */}
+            <div className="pt-2">
+              <label className="block text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Special Instructions (Optional)</label>
+              <textarea 
+                value={clientNotes} 
+                onChange={(e) => setClientNotes(e.target.value)}
+                maxLength={200}
+                placeholder="Any specific requests, gate codes, or pet instructions for Kate?" 
+                className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 transition-colors bg-slate-50 focus:bg-white min-h-25 resize-none text-sm"
+              />
+              <div className={`text-right text-[10px] font-bold tracking-wider mt-1 ${clientNotes.length === 200 ? 'text-red-500' : 'text-slate-400'}`}>
+                {clientNotes.length} / 200
+              </div>
+            </div>
+
           </div>
 
           <div>
