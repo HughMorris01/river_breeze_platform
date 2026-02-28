@@ -30,8 +30,8 @@ export default function MagicReveal({ onComplete }) {
   }, [isDone, onComplete]);
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-      <div className="relative w-full max-w-5xl aspect-[3/4] md:aspect-video rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(45,212,191,0.3)] border-4 border-white/20">
+    <div className="fixed inset-0 z-100 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div className="relative w-full max-w-5xl aspect-3/4 md:aspect-video rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(45,212,191,0.3)] border-4 border-white/20">
         
         {/* --- BEFORE IMAGES (Messy) --- */}
         <img 

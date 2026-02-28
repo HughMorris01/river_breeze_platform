@@ -1,7 +1,8 @@
-// frontend/src/components/QuoteCalculator.jsx
-import { useState, useEffect } from 'react';
+// frontend/src/pages/QuoteCalculator.jsx
+import { useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import MagicReveal from './MagicReveal';
+import MagicReveal from '../components/MagicReveal';
 
 const ADD_ON_OPTIONS = [
   { id: 'appliances', label: 'Kitchen Appliances (Fridge, Oven, Microwave)', price: 45, time: 0.75 },
@@ -24,55 +25,56 @@ export default function QuoteCalculator() {
   const [selectedAddOns, setSelectedAddOns] = useState([]);
   const [showMagic, setShowMagic] = useState(false); 
   
-  const [quote, setQuote] = useState({ price: 0, time: 0 });
+  // const [quote, setQuote] = useState({ price: 0, time: 0 });
   const navigate = useNavigate();
 
-  useEffect(() => {
-    let price = 0;
-    let time = 0;
+  const quote = useMemo(() => {
+  let price = 0;
+  let time = 0;
 
-    if (serviceType === 'Express Touch-Up') {
-      price = 59.99;
-      time = 1.0;
-    } else {
-      price = serviceType === 'The Spring Breeze Reset' ? 140 : 85;
-      time = serviceType === 'The Spring Breeze Reset' ? 2.5 : 1.25;
+  if (serviceType === 'Express Touch-Up') {
+    price = 59.99;
+    time = 1.0;
+  } else {
+    price = serviceType === 'The Spring Breeze Reset' ? 140 : 85;
+    time = serviceType === 'The Spring Breeze Reset' ? 2.5 : 1.25;
 
-      if (bedrooms > 1) {
-        price += (bedrooms - 1) * 10;
-        time += (bedrooms - 1) * 0.15;
-      }
-      
-      if (bathrooms > 1) {
-        price += (bathrooms - 1) * 20; 
-        time += (bathrooms - 1) * 0.2;
-      }
-
-      if (sqft > 1000) {
-        const extra = sqft - 1000;
-        price += (extra / 500) * 5; 
-        time += (extra / 500) * 0.1; 
-      }
-
-      price += additionalRooms * 10;
-      time += additionalRooms * 0.15;
-
-      price += pets * 5;
-      time += pets * 0.1;
+    if (bedrooms > 1) {
+      price += (bedrooms - 1) * 10;
+      time += (bedrooms - 1) * 0.15;
+    }
+    
+    if (bathrooms > 1) {
+      price += (bathrooms - 1) * 20; 
+      time += (bathrooms - 1) * 0.2;
     }
 
-    selectedAddOns.forEach(id => {
-      const addon = ADD_ON_OPTIONS.find(a => a.id === id);
-      if (addon) {
-        price += addon.price;
-        time += addon.time;
-      }
-    });
+    if (sqft > 1000) {
+      const extra = sqft - 1000;
+      price += (extra / 500) * 5; 
+      time += (extra / 500) * 0.1; 
+    }
 
-    const snappedTime = Math.round(time * 4) / 4;
-    setQuote({ price, time: snappedTime });
+    price += additionalRooms * 10;
+    time += additionalRooms * 0.15;
 
-  }, [serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns, setQuote]);
+    price += pets * 5;
+    time += pets * 0.1;
+  }
+
+  selectedAddOns.forEach(id => {
+    // Assuming ADD_ON_OPTIONS is defined outside the component or memoized
+    const addon = ADD_ON_OPTIONS.find(a => a.id === id);
+    if (addon) {
+      price += addon.price;
+      time += addon.time;
+    }
+  });
+
+  const snappedTime = Math.round(time * 4) / 4;
+  
+  return { price, time: snappedTime };
+}, [serviceType, bedrooms, bathrooms, sqft, additionalRooms, pets, selectedAddOns]);
 
   const toggleAddOn = (id) => {
     setSelectedAddOns(prev => 

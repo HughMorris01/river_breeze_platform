@@ -1,5 +1,4 @@
-// frontend/src/components/AvailabilityManager.jsx
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuthStore } from '../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -20,6 +19,15 @@ export default function AvailabilityManager({ refreshTrigger }) {
     return h * 60 + m;
   };
 
+  // Generate today's date locally in YYYY-MM-DD format to prevent past date selection
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }, []);
+
   // 1. Generate master list of 30-min intervals
   const timeOptions = useMemo(() => {
     const options = [];
@@ -37,14 +45,25 @@ export default function AvailabilityManager({ refreshTrigger }) {
     return shifts.filter(s => new Date(s.date).toISOString().split('T')[0] === date);
   }, [shifts, date]);
 
-  // 3. SMART DROPDOWN: Filter out Start Times that fall inside existing shifts
+  // 3. SMART DROPDOWN: Filter out Start Times that fall inside existing shifts AND past times
   const availableStartTimes = useMemo(() => {
     if (!date) return timeOptions;
-    return timeOptions.filter(t => {
+    
+    let validOptions = timeOptions;
+
+    // If the selected date is today, filter out past times rounded to the next half hour
+    if (date === todayStr) {
+      const now = new Date();
+      const currentMins = now.getHours() * 60 + now.getMinutes();
+      const roundedCurrentMins = Math.ceil(currentMins / 30) * 30;
+      validOptions = validOptions.filter(t => toMins(t) >= roundedCurrentMins);
+    }
+
+    return validOptions.filter(t => {
       const tMins = toMins(t);
       return !shiftsOnSelectedDate.some(s => toMins(s.startTime) <= tMins && toMins(s.endTime) > tMins);
     });
-  }, [timeOptions, shiftsOnSelectedDate, date]);
+  }, [timeOptions, shiftsOnSelectedDate, date, todayStr]);
 
   // 4. SMART DROPDOWN: Filter End Times based on Start Time AND next shift boundaries
   const availableEndTimes = useMemo(() => {
@@ -61,7 +80,7 @@ export default function AvailabilityManager({ refreshTrigger }) {
   }, [timeOptions, startTime, shiftsOnSelectedDate]);
 
 
-  const fetchShifts = async () => {
+  const fetchShifts = useCallback(async () => {
     try {
       const res = await fetch('/api/availability/shifts', {
         headers: { Authorization: `Bearer ${token}` }
@@ -71,11 +90,11 @@ export default function AvailabilityManager({ refreshTrigger }) {
     } catch (err) {
       console.error("Error fetching shifts:", err);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) fetchShifts();
-  }, [token, refreshTrigger]);
+  }, [token, refreshTrigger, fetchShifts]);
 
   const handleAddShift = async (e) => {
     e.preventDefault();
@@ -144,6 +163,7 @@ export default function AvailabilityManager({ refreshTrigger }) {
             <input 
               type="date" 
               value={date} 
+              min={todayStr} 
               onChange={(e) => {
                 setDate(e.target.value);
                 setStartTime(''); // Reset times when date changes

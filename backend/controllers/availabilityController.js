@@ -1,7 +1,11 @@
-// backend/controllers/availabilityController.js
 import Shift from '../models/Shift.js';
 import Appointment from '../models/Appointment.js';
 
+// @desc    Calculate available time slots for the next 30 days based on existing Shifts and Appointments
+// @route   GET /api/availability
+// @query   {string} date - The requested date in YYYY-MM-DD format
+// @query   {number} serviceHours - The length of the requested service in hours
+// @access  Public (Used by the Booking Calendar engine to show real-time availability to clients)
 export const getAvailability = async (req, res) => {
   try {
     // We will pass the service time from the frontend (defaults to 2 hours)
@@ -100,9 +104,10 @@ export const getAvailability = async (req, res) => {
   }
 };
 
-// @desc    Get raw shifts for the Admin Dashboard (Today & Future + Lock Status)
+// @desc    Get raw shifts for the Admin Dashboard (Today & Future)
 // @route   GET /api/availability/shifts
 // @access  Private/Admin
+// @return  {Array} Shifts flagged with 'isLocked: true' if appointments exist on that date
 export const getShifts = async (req, res) => {
   try {
     const today = new Date();
@@ -136,6 +141,7 @@ export const getShifts = async (req, res) => {
 
 // @desc    Add a new working shift
 // @route   POST /api/availability
+// @body    {string} date, {string} startTime, {string} endTime
 // @access  Private/Admin
 export const addShift = async (req, res) => {
   try {
@@ -147,9 +153,10 @@ export const addShift = async (req, res) => {
   }
 };
 
-// @desc    Delete a working shift
+// @desc    Delete a working shift by ID
 // @route   DELETE /api/availability/:id
 // @access  Private/Admin
+// @note    Security Check: Prevents deletion if active appointments exist on the shift date
 export const deleteShift = async (req, res) => {
   try {
     const shift = await Shift.findById(req.params.id);

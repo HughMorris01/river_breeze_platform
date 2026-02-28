@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 // --- STRICT FORMATTERS ---
 const formatPhone = (value) => {
   if (!value) return value;
-  const phoneNumber = value.replace(/[^\d]/g, '');
+  const phoneNumber = value.replace(/\D]/g, '');
   if (phoneNumber.length < 4) return phoneNumber;
   if (phoneNumber.length < 7) return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3)}`;
   return `(${phoneNumber.slice(0, 3)}) ${phoneNumber.slice(3, 6)}-${phoneNumber.slice(6, 10)}`;
@@ -204,7 +204,7 @@ export default function NewClientBooking() {
                
                {/* OVERLAY BADGE */}
                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                 <div className="bg-slate-800 text-white font-black tracking-widest uppercase text-sm px-6 py-3 rounded-xl shadow-2xl rotate-[-2deg]">
+                 <div className="bg-slate-800 text-white font-black tracking-widest uppercase text-sm px-6 py-3 rounded-xl shadow-2xl rotate-2">
                    Disabled For Testing
                  </div>
                </div>

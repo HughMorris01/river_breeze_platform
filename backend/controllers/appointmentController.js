@@ -1,9 +1,11 @@
 import Appointment from '../models/Appointment.js';
 import Shift from '../models/Shift.js';
 
-// @desc    Create a new appointment
+// @desc    Create a new appointment with real-time availability validation
 // @route   POST /api/appointments
+// @body    {string} client, {string} serviceType, {Array} addOns, {number} quotedPrice, {string} date, {string} startTime, {string} endTime, {number} estimatedHours
 // @access  Public
+// @note    Includes a security check to verify the shift still exists and no double-booking has occurred (including travel buffers).
 export const createAppointment = async (req, res) => {
   try {
     const { client, serviceType, addOns, quotedPrice, date, startTime, endTime, estimatedHours } = req.body;
@@ -62,9 +64,10 @@ export const createAppointment = async (req, res) => {
   }
 };
 
-// @desc    Get all appointments
+// @desc    Get all appointments with populated client details
 // @route   GET /api/appointments
 // @access  Private/Admin
+// @return  {Array} List of all appointment documents with nested client data
 export const getAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({}).populate('client');
@@ -74,7 +77,7 @@ export const getAppointments = async (req, res) => {
   }
 };
 
-// @desc    Confirm an appointment
+// @desc    Update appointment status to 'Confirmed'
 // @route   PUT /api/appointments/:id/confirm
 // @access  Private/Admin
 export const confirmAppointment = async (req, res) => {
@@ -94,9 +97,10 @@ export const confirmAppointment = async (req, res) => {
   }
 };
 
-// @desc    Cancel an appointment
+// @desc    Update appointment status to 'Canceled'
 // @route   PUT /api/appointments/:id/cancel
 // @access  Private/Admin
+// @note    The availability engine automatically ignores canceled jobs, instantly freeing the time slot for new bookings.
 export const cancelAppointment = async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);

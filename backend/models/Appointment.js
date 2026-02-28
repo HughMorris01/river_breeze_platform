@@ -40,8 +40,15 @@ const appointmentSchema = new mongoose.Schema({
   estimatedHours: {
     type: Number,
     required: true // e.g., 2.0 (Crucial for calculating the Anchor Rule)
+  },
+  clientNotes: {
+    type: String,
+    default: ''
+  },
+  adminNotes: {
+    type: String,
+    default: ''
   }
-  
 }, { timestamps: true });
 
 export default mongoose.model('Appointment', appointmentSchema);

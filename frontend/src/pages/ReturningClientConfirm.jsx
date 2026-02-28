@@ -1,9 +1,8 @@
-// frontend/src/components/ReturningClientConfirm.jsx
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import Autocomplete from 'react-google-autocomplete';
 import toast from 'react-hot-toast';
-import MagicReveal from './MagicReveal'; // <-- IMPORT THE MAGIC
+import MagicReveal from '../components/MagicReveal'; // <-- IMPORT THE MAGIC
 
 export default function ReturningClientConfirm() {
   const [address, setAddress] = useState('');
