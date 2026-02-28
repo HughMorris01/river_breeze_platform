@@ -20,7 +20,7 @@ yarn-debug.log*
 yarn-error.log*
 logs/
 *.log
-.docx
+*.docx
 
 # OS Generated Files
 .DS_Store
