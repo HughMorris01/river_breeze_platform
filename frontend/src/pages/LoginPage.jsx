@@ -55,7 +55,7 @@ export default function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full p-4 border-2 rounded-xl outline-none focus:border-teal-500 transition-colors" 
-              placeholder="admin@riverbreeze.com"
+              placeholder="Enter email address..."
             />
           </div>
 
